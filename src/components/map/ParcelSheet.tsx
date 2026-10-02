@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowSquareOut, CopySimple, CrosshairSimple, EnvelopeSimple, MapPin, Plus } from '@phosphor-icons/react'
 import { useState } from 'react'
-import { addWaypoint, db, updateWaypoint } from '../../lib/db'
+import { addWaypoint, liveWaypointsOfTypes, updateWaypoint } from '../../lib/db'
 import type { Parcel } from '../../lib/parcels'
 import { WAYPOINT_TYPES, type OwnerInfo } from '../../lib/types'
 import { useApp } from '../AppContext'
@@ -12,7 +12,7 @@ import type { LetterTarget } from './LetterSheet'
 export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSaved }: { parcel: Parcel | null; onClose: () => void; onCenter: (p: Parcel) => void; onLetter: (t: LetterTarget) => void; onSaved: (waypointId: number) => void }) {
   const { toast } = useApp()
   const [picking, setPicking] = useState(false)
-  const pins = useLiveQuery(() => db.waypoints.where('type').anyOf('stand', 'blind', 'access', 'food', 'other').toArray(), [])
+  const pins = useLiveQuery(() => liveWaypointsOfTypes(['stand', 'blind', 'access', 'food', 'other']), [])
   const p = parcel
 
   const ownerInfo = (): OwnerInfo | null =>

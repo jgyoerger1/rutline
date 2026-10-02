@@ -2,17 +2,17 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Camera, CaretLeft, CaretRight, Images, Trash, X } from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { addPhotos, db, deletePhoto } from '../../lib/db'
+import { addPhotos, deletePhoto, ensurePhotoBlob, livePhotos, updatePhoto } from '../../lib/db'
 import { fmtDateTime } from '../../lib/format'
 import type { Photo } from '../../lib/types'
 import { useApp } from '../AppContext'
 import { Button, Input, SectionLabel } from '../ui'
 
-function useObjectUrls(blobs: Array<{ id: number; blob: Blob }>): Map<number, string> {
+function useObjectUrls(blobs: Array<{ id: number; blob: Blob | null }>): Map<number, string> {
   const [urls, setUrls] = useState<Map<number, string>>(new Map())
   useEffect(() => {
     const next = new Map<number, string>()
-    for (const b of blobs) next.set(b.id, URL.createObjectURL(b.blob))
+    for (const b of blobs) if (b.blob) next.set(b.id, URL.createObjectURL(b.blob))
     setUrls(next)
     return () => next.forEach((u) => URL.revokeObjectURL(u))
   }, [blobs])
@@ -21,13 +21,18 @@ function useObjectUrls(blobs: Array<{ id: number; blob: Blob }>): Map<number, st
 
 export default function PhotoGallery({ waypointId }: { waypointId: number }) {
   const { toast } = useApp()
-  const photos = useLiveQuery(() => db.photos.where('waypointId').equals(waypointId).reverse().sortBy('takenAt'), [waypointId])
+  const photos = useLiveQuery(() => livePhotos(waypointId), [waypointId])
   const thumbs = useMemo(() => (photos ?? []).map((p) => ({ id: p.id!, blob: p.thumb })), [photos])
   const urls = useObjectUrls(thumbs)
   const [open, setOpen] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const camRef = useRef<HTMLInputElement>(null)
   const libRef = useRef<HTMLInputElement>(null)
+
+  // Account photos arrive as paths; pull their thumbnails in the background
+  useEffect(() => {
+    for (const p of photos ?? []) if (!p.thumb && p.thumbPath) void ensurePhotoBlob(p, 'thumb')
+  }, [photos])
 
   async function onFiles(files: FileList | null) {
     if (!files?.length) return
@@ -71,7 +76,7 @@ export default function PhotoGallery({ waypointId }: { waypointId: number }) {
         <div className="grid grid-cols-3 gap-1.5">
           {photos.map((p, i) => (
             <button key={p.id} onClick={() => setOpen(i)} className="push relative aspect-square rounded-lg overflow-hidden bg-pine-800 border border-bone-50/6">
-              {urls.get(p.id!) && <img src={urls.get(p.id!)} alt={p.caption || 'Photo'} className="w-full h-full object-cover" loading="lazy" />}
+              {urls.get(p.id!) ? <img src={urls.get(p.id!)} alt={p.caption || 'Photo'} className="w-full h-full object-cover" loading="lazy" /> : <div className="skeleton absolute inset-0 rounded-none" />}
             </button>
           ))}
         </div>
@@ -87,10 +92,20 @@ function Lightbox({ photos, index, onIndex, onClose }: { photos: Photo[]; index:
   const [caption, setCaption] = useState(p.caption)
   const { toast } = useApp()
   useEffect(() => {
-    const u = URL.createObjectURL(p.blob)
-    setUrl(u)
+    let alive = true
+    let u: string | null = null
+    setUrl(null)
     setCaption(p.caption)
-    return () => URL.revokeObjectURL(u)
+    void (async () => {
+      const b = (await ensurePhotoBlob(p, 'blob')) ?? p.thumb
+      if (!alive || !b) return
+      u = URL.createObjectURL(b)
+      setUrl(u)
+    })()
+    return () => {
+      alive = false
+      if (u) URL.revokeObjectURL(u)
+    }
   }, [p])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -126,7 +141,11 @@ function Lightbox({ photos, index, onIndex, onClose }: { photos: Photo[]; index:
         </div>
       </div>
       <div className="relative flex-1 min-h-0 flex items-center justify-center px-2">
-        {url && <motion.img key={p.id} src={url} alt={p.caption || 'Photo'} className="max-w-full max-h-full object-contain rounded-lg" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 220, damping: 26 }} />}
+        {url ? (
+          <motion.img key={p.id} src={url} alt={p.caption || 'Photo'} className="max-w-full max-h-full object-contain rounded-lg" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 220, damping: 26 }} />
+        ) : (
+          <div className="skeleton w-[70%] max-w-md aspect-[4/3]" />
+        )}
         {index > 0 && (
           <button onClick={() => onIndex(index - 1)} aria-label="Previous" className="push absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 grid place-items-center rounded-full glass">
             <CaretLeft size={20} />
@@ -144,7 +163,7 @@ function Lightbox({ photos, index, onIndex, onClose }: { photos: Photo[]; index:
           placeholder="Caption, like 'Big 8 at 6:42 am'"
           onChange={(e) => setCaption(e.target.value)}
           onBlur={() => {
-            if (caption !== p.caption) void db.photos.update(p.id!, { caption })
+            if (caption !== p.caption) void updatePhoto(p.id!, { caption })
           }}
         />
       </div>

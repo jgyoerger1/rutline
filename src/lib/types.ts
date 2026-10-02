@@ -51,7 +51,17 @@ export interface OwnerInfo {
   savedAt: number
 }
 
-export interface Waypoint {
+/** Columns every synced row carries */
+export interface SyncMeta {
+  /** Stable id shared with the account */
+  uid: string
+  /** 1 = has local changes the account has not seen */
+  dirty: number
+  /** Tombstone: set when deleted, kept until the deletion has been pushed */
+  deletedAt: number | null
+}
+
+export interface Waypoint extends SyncMeta {
   id?: number
   type: WaypointType
   name: string
@@ -65,11 +75,17 @@ export interface Waypoint {
   updatedAt: number
 }
 
-export interface Photo {
+export interface Photo extends SyncMeta {
   id?: number
   waypointId: number
-  blob: Blob
-  thumb: Blob
+  waypointUid: string | null
+  /** Bytes live here once captured or downloaded; null for an account photo not opened yet */
+  blob: Blob | null
+  thumb: Blob | null
+  /** Object paths in the account's photo store */
+  path: string | null
+  thumbPath: string | null
+  uploadedAt: number | null
   /** Capture time from EXIF when present, else file time */
   takenAt: number
   addedAt: number
@@ -87,7 +103,7 @@ export const TRAIL_KINDS: Record<TrailKind, { label: string; hint: string }> = {
   drag: { label: 'Blood trail', hint: 'Recovered track from the tracker' },
 }
 
-export interface Trail {
+export interface Trail extends SyncMeta {
   id?: number
   name: string
   kind: TrailKind
@@ -154,6 +170,8 @@ export interface Settings {
   parcelsEnabled: boolean
   customParcelSource: CustomParcelSource | null
   hunter: HunterProfile
+  /** The user chose to run without an account on this device */
+  localOnly: boolean
 }
 
 export interface HourData {

@@ -1,13 +1,18 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { MapTrifold, PawPrint, Scan, SlidersHorizontal, Wind } from '@phosphor-icons/react'
+import { CloudArrowUp, CloudCheck, CloudSlash, CloudWarning, MapTrifold, PawPrint, Scan, SlidersHorizontal, Wind } from '@phosphor-icons/react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { AppCtx, useApp, type AppState, type View } from './components/AppContext'
 import Onboarding from './components/Onboarding'
+import SignIn from './components/auth/SignIn'
 import MapView from './components/map/MapView'
 import { PageTransition, Splash, TopoBackdrop, Wordmark } from './components/motion'
+import { Button, Field, Input, Sheet } from './components/ui'
+import { clearRecovery, useAuth } from './lib/auth'
+import { cloud, cloudConfigured } from './lib/cloud'
 import { scoreForecast } from './lib/huntcast'
 import { parsePeakOverride } from './lib/rut'
 import { useSettings } from './lib/settings'
+import { resolveSwitch, startSync, useSyncStatus } from './lib/sync'
 import { useForecast } from './lib/weather'
 
 const ForecastView = lazy(() => import('./components/weather/ForecastView'))
@@ -30,14 +35,17 @@ function readHash(): View {
 
 export default function App() {
   const [settings, setSettings] = useSettings()
+  const auth = useAuth()
+  const sync = useSyncStatus()
   const home = settings.home
   const { forecast, loading, error, refresh } = useForecast(home?.lat ?? null, home?.lon ?? null)
   const [view, setViewState] = useState<View>(readHash)
   const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([])
   const [focusRequest, setFocusRequest] = useState<number | null>(null)
-  const [showOnboarding, setShowOnboarding] = useState(() => !settings.home)
+  const [skippedOnboarding, setSkippedOnboarding] = useState(false)
 
   useEffect(() => {
+    startSync()
     const onHash = () => setViewState(readHash())
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
@@ -87,6 +95,10 @@ export default function App() {
     clearFocus: () => setFocusRequest(null),
   }
 
+  // Gate order: sign-in (when a backend exists and the user has not opted out), then home ground
+  const showSignIn = cloudConfigured && auth.ready && !auth.user && !settings.localOnly
+  const showOnboarding = !showSignIn && auth.ready && !settings.home && !skippedOnboarding
+
   return (
     <AppCtx.Provider value={state}>
       <div className="h-[100dvh] flex flex-col md:flex-row bg-pine-950">
@@ -113,7 +125,8 @@ export default function App() {
               )
             })}
           </nav>
-          <div className="mt-auto">
+          <div className="mt-auto flex flex-col items-center gap-2">
+            <SyncDot />
             <StatusDot />
           </div>
         </aside>
@@ -124,7 +137,8 @@ export default function App() {
             <div className="h-12 px-4 flex items-center gap-3">
               <img src="icons/icon-192.png" alt="" className="w-7 h-7 rounded-lg border border-bone-50/10" />
               <Wordmark className="text-[17px]" />
-              <span className="ml-auto text-xs text-bone-600 truncate max-w-[42%]">{home?.label ?? 'No home ground'}</span>
+              <span className="ml-auto text-xs text-bone-600 truncate max-w-[38%]">{home?.label ?? 'No home ground'}</span>
+              <SyncDot />
               <StatusDot />
             </div>
           </header>
@@ -168,7 +182,10 @@ export default function App() {
         </main>
       </div>
 
-      <AnimatePresence>{showOnboarding && <Onboarding onDone={() => setShowOnboarding(false)} />}</AnimatePresence>
+      <AnimatePresence>{showOnboarding && <Onboarding key="onboarding" onDone={() => setSkippedOnboarding(true)} />}</AnimatePresence>
+      <AnimatePresence>{showSignIn && <SignIn key="signin" />}</AnimatePresence>
+      <SwitchSheet open={sync.state === 'switch'} from={sync.switchFrom} />
+      <RecoverySheet open={auth.recovery} />
       <Splash />
 
       <div className="fixed left-1/2 -translate-x-1/2 bottom-24 md:bottom-8 z-[70] flex flex-col gap-2 items-center pointer-events-none">
@@ -191,10 +208,77 @@ function StatusDot() {
   const label = !home ? 'No location' : error ? 'Weather offline' : loading ? 'Updating' : fresh ? 'Live' : 'Stale'
   const tone = !home ? 'bg-bone-800' : error ? 'bg-ember-600' : fresh ? 'bg-bone-50' : 'bg-ember-400'
   return (
-    <span className="relative inline-flex items-center justify-center w-6 h-6" title={label} aria-label={`Weather status: ${label}`}>
+    <span className="relative inline-flex items-center justify-center w-6 h-6" title={`Weather: ${label}`} aria-label={`Weather status: ${label}`}>
       <span className={`absolute w-2 h-2 rounded-full ${tone} ${fresh && !error ? 'breathe' : ''}`} />
       <span className={`w-2 h-2 rounded-full ${tone}`} />
     </span>
+  )
+}
+
+function SyncDot() {
+  const auth = useAuth()
+  const s = useSyncStatus()
+  if (!cloud || !auth.user) return null
+  const Icon = s.state === 'syncing' ? CloudArrowUp : s.state === 'offline' ? CloudSlash : s.state === 'error' || s.state === 'switch' ? CloudWarning : CloudCheck
+  const tone = s.state === 'error' || s.state === 'switch' ? 'text-ember-400' : s.state === 'syncing' ? 'text-ember-300' : s.pending ? 'text-bone-200' : 'text-bone-600'
+  const title = s.state === 'syncing' ? 'Syncing' : s.state === 'offline' ? 'Offline' : s.state === 'error' ? s.error ?? 'Sync error' : s.pending ? `${s.pending} changes waiting` : 'Synced'
+  return (
+    <span className={`inline-flex items-center justify-center w-6 h-6 ${tone}`} title={title} aria-label={`Sync: ${title}`}>
+      <Icon size={16} weight={s.state === 'syncing' ? 'fill' : 'regular'} className={s.state === 'syncing' ? 'breathe' : ''} />
+    </span>
+  )
+}
+
+function SwitchSheet({ open, from }: { open: boolean; from: string | null }) {
+  return (
+    <Sheet open={open} onClose={() => resolveSwitch('merge')} title="This device has another account's data">
+      <p className="text-sm text-bone-300 leading-relaxed">
+        The pins on this device were last synced to a different account{from ? ` (${from.slice(0, 8)}…)` : ''}. Add them to the account you just signed into, or start this device clean. Nothing is removed from the other account either way.
+      </p>
+      <div className="mt-5 flex flex-col gap-2">
+        <Button variant="primary" onClick={() => resolveSwitch('merge')}>
+          Keep them and add to this account
+        </Button>
+        <Button variant="ghost" onClick={() => resolveSwitch('clear')}>
+          Start clean on this device
+        </Button>
+      </div>
+    </Sheet>
+  )
+}
+
+function RecoverySheet({ open }: { open: boolean }) {
+  const { toast } = useApp()
+  const [pw, setPw] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  return (
+    <Sheet open={open} onClose={clearRecovery} title="Set a new password">
+      <Field label="New password" helper="At least 8 characters." error={err}>
+        <Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" />
+      </Field>
+      <Button
+        variant="primary"
+        className="mt-4"
+        disabled={busy || pw.length < 8}
+        onClick={async () => {
+          if (!cloud) return
+          setBusy(true)
+          setErr(null)
+          try {
+            await cloud.updatePassword(pw)
+            toast('Password updated')
+            clearRecovery()
+          } catch (e) {
+            setErr(e instanceof Error ? e.message : 'Could not update')
+          } finally {
+            setBusy(false)
+          }
+        }}
+      >
+        Save password
+      </Button>
+    </Sheet>
   )
 }
 

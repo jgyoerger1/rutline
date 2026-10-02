@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowUp } from '@phosphor-icons/react'
-import { db } from '../../lib/db'
+import { liveWaypointsOfTypes } from '../../lib/db'
 import { degToCompass, windFit, type WindFit } from '../../lib/geo'
 import { useApp } from '../AppContext'
 import { TYPE_ICON } from '../icons'
@@ -15,7 +15,7 @@ const FIT: Record<WindFit, { label: string; cls: string; order: number }> = {
 
 export default function StandPicks({ windDir, windMph }: { windDir: number; windMph: number }) {
   const { setView, focusWaypoint, settings } = useApp()
-  const stands = useLiveQuery(() => db.waypoints.where('type').anyOf('stand', 'blind').toArray(), [])
+  const stands = useLiveQuery(() => liveWaypointsOfTypes(['stand', 'blind']), [])
   if (!stands) return null
   const unit = settings.units === 'metric' ? `${Math.round(windMph * 1.60934)} km/h` : `${Math.round(windMph)} mph`
   if (!stands.length) {

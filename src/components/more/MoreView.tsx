@@ -1,18 +1,19 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AppleLogo, Database, DownloadSimple, Trash, UploadSimple } from '@phosphor-icons/react'
 import { useRef, useState } from 'react'
-import { clearAll, db, exportBackup, exportGeoJSON, importBackup } from '../../lib/db'
+import { clearLocal, exportBackup, exportGeoJSON, importBackup, liveCounts } from '../../lib/db'
 import { defaultPeakRut, seasonYear } from '../../lib/rut'
 import { downloadBlob } from '../../lib/useGeo'
 import { useApp } from '../AppContext'
 import HomePicker from '../HomePicker'
+import AccountSection from './AccountSection'
 import CustomSourceForm from './CustomSourceForm'
 import { COUNTY_SOURCES } from '../../lib/parcels'
 import { Button, Field, Input, SectionLabel, Segmented } from '../ui'
 
 export default function MoreView() {
   const { settings, setSettings, home, toast, peak } = useApp()
-  const counts = useLiveQuery(async () => ({ w: await db.waypoints.count(), p: await db.photos.count(), t: await db.trails.count() }), [])
+  const counts = useLiveQuery(liveCounts, [])
   const [busy, setBusy] = useState<string | null>(null)
   const importRef = useRef<HTMLInputElement>(null)
   const importMode = useRef<'merge' | 'replace'>('merge')
@@ -74,6 +75,10 @@ export default function MoreView() {
         </div>
 
         <div className="divide-y divide-bone-50/8">
+          <Section title="Account" body="Sign in once and your pins, photos, landowners and settings follow you to every device.">
+            <AccountSection />
+          </Section>
+
           <Section title="Property lines" body="Boundaries and owner mailing addresses come from Ohio's statewide parcel service for all 88 counties. Owner names are added where the county publishes them.">
             <Segmented id="parcels" value={settings.parcelsEnabled ? 'on' : 'off'} onChange={(v) => setSettings({ parcelsEnabled: v === 'on' })} options={[{ value: 'on', label: 'Show lines' }, { value: 'off', label: 'Hide' }]} />
             <div className="mt-4 text-[13px] text-bone-400 leading-relaxed">
@@ -100,7 +105,7 @@ export default function MoreView() {
             </div>
           </Section>
 
-          <Section title="Your data" body={counts ? `${counts.w} pins · ${counts.t} lines · ${counts.p} photos, all stored on this device. Back up before you switch phones.` : 'Counting...'}>
+          <Section title="Your data" body={counts ? `${counts.w} pins · ${counts.t} lines · ${counts.p} photos, on this device. Signed in, they also live in your account; otherwise back up before you switch phones.` : 'Counting...'}>
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => run('backup', async () => downloadBlob(await exportBackup(), `rutline-backup-${new Date().toISOString().slice(0, 10)}.json`))} disabled={!!busy}>
                 <DownloadSimple size={16} /> Backup (with photos)
@@ -137,15 +142,15 @@ export default function MoreView() {
                 variant="danger"
                 size="sm"
                 onClick={() => {
-                  if (!confirm('Delete every pin, line and photo on this device? This cannot be undone.')) return
+                  if (!confirm('Remove every pin, line and photo from this device? If you are signed in, your account copy is untouched and comes back on the next sync.')) return
                   void run('clear', async () => {
-                    await clearAll()
-                    toast('All data cleared')
+                    await clearLocal()
+                    toast('This device is cleared')
                   })
                 }}
                 disabled={!!busy}
               >
-                <Trash size={15} /> Clear all data
+                <Trash size={15} /> Clear this device
               </Button>
             </div>
           </Section>

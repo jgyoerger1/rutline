@@ -4,7 +4,7 @@ import { ArrowUp, Check, GpsFix, List, MapPin, Path, Plus, Polygon as ParcelsIco
 import L from 'leaflet'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
-import { addTrail, addWaypoint, db, deleteTrail } from '../../lib/db'
+import { addTrail, addWaypoint, deleteTrail, liveTrails, liveWaypoints, updateTrail, updateWaypoint } from '../../lib/db'
 import { degToCompass, fmtDistance, haversineM } from '../../lib/geo'
 import { TRAIL_KINDS, WAYPOINT_ORDER, WAYPOINT_TYPES, type MapLayer, type Trail, type TrailKind, type Waypoint, type WaypointType } from '../../lib/types'
 import { useWatchPosition } from '../../lib/useGeo'
@@ -35,8 +35,8 @@ const TRAIL_STYLE: Record<TrailKind, L.PathOptions> = {
 
 export default function MapView({ active }: { active: boolean }) {
   const { home, settings, setSettings, forecast, toast, focusRequest, clearFocus, setView } = useApp()
-  const waypoints = useLiveQuery(() => db.waypoints.toArray(), [])
-  const trails = useLiveQuery(() => db.trails.toArray(), [])
+  const waypoints = useLiveQuery(liveWaypoints, [])
+  const trails = useLiveQuery(liveTrails, [])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [selectedTrail, setSelectedTrail] = useState<number | null>(null)
   const [addMode, setAddMode] = useState<AddMode>(null)
@@ -187,7 +187,7 @@ export default function MapView({ active }: { active: boolean }) {
               },
               dragend: (e) => {
                 const ll = (e.target as L.Marker).getLatLng()
-                void db.waypoints.update(w.id!, { lat: ll.lat, lon: ll.lng, updatedAt: Date.now() })
+                void updateWaypoint(w.id!, { lat: ll.lat, lon: ll.lng })
               },
             }}
             zIndexOffset={w.id === selectedId ? 1000 : 0}
@@ -536,7 +536,7 @@ function TrailSheet({ trail, onClose }: { trail: Trail | null; onClose: () => vo
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={() => {
-              if (name.trim() && name !== trail.name) void db.trails.update(trail.id!, { name: name.trim(), updatedAt: Date.now() })
+              if (name.trim() && name !== trail.name) void updateTrail(trail.id!, { name: name.trim() })
             }}
           />
           <div className="grid grid-cols-2 gap-4">
