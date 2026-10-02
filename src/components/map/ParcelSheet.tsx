@@ -92,12 +92,12 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
                 <div className="mt-1 text-base font-semibold tracking-tight">{p.owner}</div>
               ) : (
                 <div className="mt-1 text-sm text-bone-400 leading-relaxed">
-                  {p.county || 'This county'} does not publish owner names on its public layer.
+                  Owner names for {p.county ? p.county + ' County' : 'this county'} are withheld from the statewide layer.
                   {p.recordsUrl && (
                     <>
                       {' '}
                       <a href={p.recordsUrl} target="_blank" rel="noreferrer" className="text-bone-50 underline underline-offset-4 decoration-bone-50/30 inline-flex items-center gap-1">
-                        Look it up at the county <ArrowSquareOut size={12} />
+                        Look it up at the county auditor <ArrowSquareOut size={12} />
                       </a>
                     </>
                   )}

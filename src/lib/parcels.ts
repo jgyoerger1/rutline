@@ -324,7 +324,7 @@ function normalize(source: ParcelSource, p: Record<string, unknown>, geometry: P
     acres,
     landUse: get(f.landUse),
     link: link && /^https?:\/\//i.test(link) ? link : null,
-    recordsUrl: source.recordsUrl ?? COUNTY_RECORDS[county] ?? null,
+    recordsUrl: source.kind === 'statewide' ? COUNTY_RECORDS[county] ?? (county ? auditorSearchUrl(county) : null) : source.recordsUrl ?? COUNTY_RECORDS[county] ?? null,
     units: 1,
     geometry,
     centroid,
@@ -332,6 +332,11 @@ function normalize(source: ParcelSource, p: Record<string, unknown>, geometry: P
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100
+
+/** No curated link for this county: send the hunter to a search for its auditor property lookup */
+function auditorSearchUrl(county: string): string {
+  return 'https://www.google.com/search?q=' + encodeURIComponent(county + ' County Ohio auditor property search')
+}
 
 /** Esri rings to GeoJSON. Esri outer rings run clockwise, holes counter-clockwise. */
 export function ringsToGeoJSON(rings: Position[][]): Polygon | MultiPolygon {
