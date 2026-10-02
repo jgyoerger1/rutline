@@ -1,7 +1,7 @@
 {
-  "name": "downwind",
+  "name": "rutline",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,6 +12,7 @@
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
+    "@fontsource/chakra-petch": "^5.3.0",
     "@phosphor-icons/react": "^2.1.10",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",

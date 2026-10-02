@@ -1,12 +1,13 @@
 import { ArrowClockwise, ArrowUp, MapPin, SunHorizon, TrendDown, TrendUp, Wind } from '@phosphor-icons/react'
 import { useMemo } from 'react'
 import { moonInfo } from '../../lib/astro'
-import { fmtDay, fmtHour, fmtPrecip, fmtPressure, fmtPressureDelta, fmtSpeed, fmtTemp, fmtTime, relTime, wxCode } from '../../lib/format'
+import { fmtDay, fmtHour, fmtPrecip, fmtPressureDelta, fmtSpeed, fmtTemp, fmtTime, relTime, wxCode } from '../../lib/format'
 import { degToCompass } from '../../lib/geo'
 import { nowIndex } from '../../lib/weather'
 import { useApp } from '../AppContext'
 import { WxIcon } from '../icons'
 import { Button, EmptyState, InlineError, SectionLabel, Skeleton, Stat } from '../ui'
+import { CountUp, Reveal } from '../motion'
 import PressureChart from './PressureChart'
 import WindCompass from './WindCompass'
 
@@ -68,9 +69,9 @@ export default function ForecastView() {
 
         <div className="grid grid-cols-2 gap-x-6 gap-y-5 md:border-l md:border-bone-50/8 md:pl-8">
           <div className="col-span-2 flex items-center gap-4">
-            <WxIcon icon={wx.icon} isDay={now.isDay} size={44} weight="duotone" className="text-bone-200 shrink-0" />
+            <WxIcon icon={wx.icon} isDay={now.isDay} size={44} weight="duotone" className="text-bone-200 shrink-0 float" />
             <div>
-              <div className="font-mono text-4xl leading-none tnum">{fmtTemp(now.tempF, units)}</div>
+              <div className="font-mono text-4xl leading-none tnum"><CountUp value={units === 'metric' ? ((now.tempF - 32) * 5) / 9 : now.tempF} suffix={units === 'metric' ? '°C' : '°F'} /></div>
               <div className="text-sm text-bone-400 mt-1.5">
                 {wx.label} · feels {fmtTemp(now.feelsF, units, false)}
               </div>
@@ -78,7 +79,7 @@ export default function ForecastView() {
           </div>
           <Stat
             label="Pressure"
-            value={fmtPressure(now.pressureInHg, units)}
+            value={<CountUp value={units === 'metric' ? now.pressureInHg * 33.8639 : now.pressureInHg} decimals={units === 'metric' ? 0 : 2} suffix={units === 'metric' ? ' hPa' : ' inHg'} />}
             sub={
               <span className="inline-flex items-center gap-1">
                 {trend > 0.015 ? <TrendUp size={13} className="text-ember-400" /> : trend < -0.015 ? <TrendDown size={13} className="text-ember-400" /> : null}
@@ -86,9 +87,9 @@ export default function ForecastView() {
               </span>
             }
           />
-          <Stat label="Humidity" value={`${Math.round(now.humidity)}%`} sub={`dew point ${fmtTemp(now.dewF, units, false)}`} />
+          <Stat label="Humidity" value={<CountUp value={now.humidity} suffix="%" />} sub={`dew point ${fmtTemp(now.dewF, units, false)}`} />
           <Stat label="Sun" value={`${fmtTime(today.sunrise)} – ${fmtTime(today.sunset)}`} sub="sunrise to sunset" />
-          <Stat label="Moon" value={`${Math.round(moon.illumination * 100)}%`} sub={moon.name} />
+          <Stat label="Moon" value={<CountUp value={moon.illumination * 100} suffix="%" />} sub={moon.name} />
         </div>
       </section>
 
@@ -119,6 +120,7 @@ export default function ForecastView() {
       </section>
 
       {/* Pressure */}
+      <Reveal>
       <section className="grid gap-6 md:grid-cols-[2fr_1fr] md:items-start">
         <div>
           <div className="flex items-end justify-between mb-2">
@@ -131,8 +133,10 @@ export default function ForecastView() {
           {trend >= 0.06 ? 'Rising fast. This is the classic behind-the-front surge: get in a stand.' : trend >= 0.02 ? 'Rising. Deer feed more as the barometer climbs.' : trend <= -0.06 ? 'Falling fast. Weather is coming and deer feed ahead of it, then hold tight when it hits.' : trend <= -0.02 ? 'Falling. Watch for the pre-storm feeding window.' : 'Steady. No pressure kicker right now; look to temperature and wind.'}
         </div>
       </section>
+      </Reveal>
 
       {/* Days */}
+      <Reveal>
       <section>
         <SectionLabel className="mb-2">This week</SectionLabel>
         <ul className="divide-y divide-bone-50/8 border-t border-b border-bone-50/8 cascade">
@@ -159,6 +163,7 @@ export default function ForecastView() {
         </ul>
         <p className="mt-3 text-[12px] text-bone-600">Forecast by Open-Meteo, blended from NOAA, ECMWF and DWD models. Refreshes every 30 minutes while the app is open.</p>
       </section>
+      </Reveal>
     </Page>
   )
 }

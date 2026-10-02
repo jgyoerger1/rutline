@@ -4,6 +4,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import { AppCtx, useApp, type AppState, type View } from './components/AppContext'
 import Onboarding from './components/Onboarding'
 import MapView from './components/map/MapView'
+import { PageTransition, Splash, TopoBackdrop, Wordmark } from './components/motion'
 import { scoreForecast } from './lib/huntcast'
 import { parsePeakOverride } from './lib/rut'
 import { useSettings } from './lib/settings'
@@ -17,8 +18,8 @@ const MoreView = lazy(() => import('./components/more/MoreView'))
 const VIEWS: Array<{ id: View; label: string; Icon: typeof MapTrifold }> = [
   { id: 'map', label: 'Map', Icon: MapTrifold },
   { id: 'forecast', label: 'Wind', Icon: Wind },
-  { id: 'huntcast', label: 'HuntCast', Icon: PawPrint },
-  { id: 'tracker', label: 'Tracker', Icon: Scan },
+  { id: 'huntcast', label: 'Predict', Icon: PawPrint },
+  { id: 'tracker', label: 'Track', Icon: Scan },
   { id: 'more', label: 'More', Icon: SlidersHorizontal },
 ]
 
@@ -91,23 +92,24 @@ export default function App() {
       <div className="h-[100dvh] flex flex-col md:flex-row bg-pine-950">
         {/* Desktop rail */}
         <aside className="hidden md:flex w-[92px] shrink-0 flex-col items-center border-r border-pine-700 bg-pine-900/60 pt-4 pb-6">
-          <button onClick={() => setView('map')} className="push rounded-2xl overflow-hidden w-12 h-12 border border-bone-50/10 shadow-pine" aria-label="Downwind home">
+          <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} onClick={() => setView('map')} className="rounded-2xl overflow-hidden w-12 h-12 border border-bone-50/10 shadow-pine" aria-label="Rutline home">
             <img src="icons/icon-192.png" alt="" className="w-full h-full object-cover" />
-          </button>
+          </motion.button>
           <nav className="mt-8 flex flex-col gap-1 w-full px-3" aria-label="Primary">
             {VIEWS.map(({ id, label, Icon }) => {
               const active = view === id
               return (
-                <button
+                <motion.button
                   key={id}
+                  whileTap={{ scale: 0.94 }}
                   onClick={() => setView(id)}
-                  className={`push relative flex flex-col items-center gap-1 rounded-xl py-2.5 text-[11px] font-medium tracking-wide transition-colors ${active ? 'text-bone-50' : 'text-bone-600 hover:text-bone-200'}`}
+                  className={`relative flex flex-col items-center gap-1 rounded-xl py-2.5 text-[11px] font-medium tracking-wide transition-colors ${active ? 'text-bone-50' : 'text-bone-600 hover:text-bone-200'}`}
                   aria-current={active ? 'page' : undefined}
                 >
                   {active && <motion.span layoutId="rail-active" className="absolute inset-0 rounded-xl bg-pine-700/70 border border-bone-50/8" transition={{ type: 'spring', stiffness: 300, damping: 30 }} />}
                   <Icon size={22} weight={active ? 'fill' : 'regular'} className="relative" />
                   <span className="relative">{label}</span>
-                </button>
+                </motion.button>
               )
             })}
           </nav>
@@ -121,8 +123,8 @@ export default function App() {
           <header className="md:hidden shrink-0 pt-safe bg-pine-950/90 backdrop-blur border-b border-pine-700">
             <div className="h-12 px-4 flex items-center gap-3">
               <img src="icons/icon-192.png" alt="" className="w-7 h-7 rounded-lg border border-bone-50/10" />
-              <span className="font-semibold tracking-tight">Downwind</span>
-              <span className="ml-auto text-xs text-bone-600 truncate max-w-[45%]">{home?.label ?? 'No home ground'}</span>
+              <Wordmark className="text-[17px]" />
+              <span className="ml-auto text-xs text-bone-600 truncate max-w-[42%]">{home?.label ?? 'No home ground'}</span>
               <StatusDot />
             </div>
           </header>
@@ -132,14 +134,19 @@ export default function App() {
               <MapView active={view === 'map'} />
             </div>
             {view !== 'map' && (
-              <div className="absolute inset-0 overflow-y-auto overscroll-contain">
-                <Suspense fallback={<ViewSkeleton />}>
-                  {view === 'forecast' && <ForecastView />}
-                  {view === 'huntcast' && <HuntCastView />}
-                  {view === 'tracker' && <TrackerView />}
-                  {view === 'more' && <MoreView />}
-                </Suspense>
-              </div>
+              <>
+                <TopoBackdrop />
+                <div className="absolute inset-0 overflow-y-auto overscroll-contain">
+                  <Suspense fallback={<ViewSkeleton />}>
+                    <PageTransition id={view}>
+                      {view === 'forecast' && <ForecastView />}
+                      {view === 'huntcast' && <HuntCastView />}
+                      {view === 'tracker' && <TrackerView />}
+                      {view === 'more' && <MoreView />}
+                    </PageTransition>
+                  </Suspense>
+                </div>
+              </>
             )}
           </div>
 
@@ -149,10 +156,11 @@ export default function App() {
               {VIEWS.map(({ id, label, Icon }) => {
                 const active = view === id
                 return (
-                  <button key={id} onClick={() => setView(id)} className={`push flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-medium ${active ? 'text-ember-400' : 'text-bone-600'}`} aria-current={active ? 'page' : undefined}>
+                  <motion.button key={id} whileTap={{ scale: 0.9 }} onClick={() => setView(id)} className={`relative flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-medium ${active ? 'text-ember-400' : 'text-bone-600'}`} aria-current={active ? 'page' : undefined}>
+                    {active && <motion.span layoutId="tab-active" className="absolute top-1.5 w-9 h-1 rounded-full bg-ember-500" transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
                     <Icon size={22} weight={active ? 'fill' : 'regular'} />
                     {label}
-                  </button>
+                  </motion.button>
                 )
               })}
             </div>
@@ -161,6 +169,7 @@ export default function App() {
       </div>
 
       <AnimatePresence>{showOnboarding && <Onboarding onDone={() => setShowOnboarding(false)} />}</AnimatePresence>
+      <Splash />
 
       <div className="fixed left-1/2 -translate-x-1/2 bottom-24 md:bottom-8 z-[70] flex flex-col gap-2 items-center pointer-events-none">
         <AnimatePresence>

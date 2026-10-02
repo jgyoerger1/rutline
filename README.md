@@ -1,6 +1,6 @@
-# Downwind
+# Rutline
 
-Know the wind. Know the hour.
+Map. Predict. Track.
 
 A whitetail hunting web app that installs on a phone like a native one. Everything you pin stays on your device; the only network calls are for weather, map tiles and place search.
 
@@ -39,7 +39,7 @@ The app is plain web code, so it can be wrapped with [Capacitor](https://capacit
 
 ```bash
 npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/haptics
-npx cap init Downwind com.yourname.downwind --web-dir dist
+npx cap init Rutline com.yourname.rutline --web-dir dist
 npm run build && npx cap add ios && npx cap sync ios && npx cap open ios
 ```
 
@@ -57,4 +57,4 @@ Vite, React 19, TypeScript, Tailwind CSS 4, Framer Motion, Phosphor icons, Leafl
 
 ## How the HuntCast model was built
 
-Commercial forecasts (HuntWise HuntCast, DeerCast, BestHuntingTime) describe the same inputs without publishing weights: barometric pressure level and trend, temperature against the previous day, wind band, precipitation and its edges, cloud cover, moon, time of day and rut phase as a multiplier. GPS-collar research (Mississippi State, Texas A&M-Kingsville, Penn State, Maryland) finds that rut timing and dawn/dusk dominate buck movement and that weather and moon are weak signals. Downwind's weights follow that evidence: time of day and rut carry the index, pressure trend, a real temperature drop and a workable wind are the next tier, and the moon is deliberately small. Every factor and its point range is listed in `src/lib/huntcast.ts` and in the app.
+Commercial forecasts (HuntWise HuntCast, DeerCast, BestHuntingTime) describe the same inputs without publishing weights: barometric pressure level and trend, temperature against the previous day, wind band, precipitation and its edges, cloud cover, moon, time of day and rut phase as a multiplier. GPS-collar research (Mississippi State, Texas A&M-Kingsville, Penn State, Maryland) finds that rut timing and dawn/dusk dominate buck movement and that weather and moon are weak signals. Rutline's weights follow that evidence: time of day and rut carry the index, pressure trend, a real temperature drop and a workable wind are the next tier, and the moon is deliberately small. Every factor and its point range is listed in `src/lib/huntcast.ts` and in the app.

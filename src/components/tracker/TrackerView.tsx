@@ -343,6 +343,15 @@ export default function TrackerView() {
 
           {showCanvas && (
             <>
+              {status === 'live' && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
+                  <div className="scanline absolute inset-x-0 h-px bg-ember-400/70 shadow-[0_0_12px_rgba(240,138,63,0.6)]" />
+                  <span className="absolute left-4 top-14 w-6 h-6 border-l-2 border-t-2 border-bone-50/50 rounded-tl" />
+                  <span className="absolute right-4 top-14 w-6 h-6 border-r-2 border-t-2 border-bone-50/50 rounded-tr" />
+                  <span className="absolute left-4 bottom-24 w-6 h-6 border-l-2 border-b-2 border-bone-50/50 rounded-bl" />
+                  <span className="absolute right-4 bottom-24 w-6 h-6 border-r-2 border-b-2 border-bone-50/50 rounded-br" />
+                </div>
+              )}
               <div className="absolute top-3 left-3 right-3 flex items-start gap-2 pointer-events-none">
                 <AnimatePresence>
                   {detected && (

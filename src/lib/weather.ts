@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DayData, Forecast, HourData } from './types'
 
-const CACHE_KEY = 'downwind.forecast.v1'
+const CACHE_KEY = 'rutline.forecast.v1'
 const FRESH_MS = 30 * 60 * 1000
 
 interface OpenMeteo {

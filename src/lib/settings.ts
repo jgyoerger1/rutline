@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { Settings } from './types'
 
-const KEY = 'downwind.settings.v1'
+const KEY = 'rutline.settings.v1'
 
 const DEFAULTS: Settings = {
   home: null,

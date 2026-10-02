@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs'
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 
 // GitHub Pages serves project sites from /<repo>/ ; local dev runs at /
-const REPO_BASE = process.env.VITE_BASE ?? '/downwind/'
+const REPO_BASE = process.env.VITE_BASE ?? '/rutline/'
 
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? REPO_BASE : '/',
@@ -16,13 +16,13 @@ export default defineConfig(({ command }) => ({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/*.png'],
+      includeAssets: ['icons/*.png', 'brand/*.jpg'],
       manifest: {
-        name: 'Downwind',
-        short_name: 'Downwind',
-        description: 'Stand map, wind and weather, HuntCast movement forecast and a blood-trail camera for whitetail season.',
-        theme_color: '#0e1311',
-        background_color: '#0e1311',
+        name: 'Rutline',
+        short_name: 'Rutline',
+        description: 'Map. Predict. Track. Stand map, live wind and weather, HuntCast movement forecast and a blood-trail camera for whitetail season.',
+        theme_color: '#0f1110',
+        background_color: '#0f1110',
         display: 'standalone',
         orientation: 'any',
         start_url: '.',
@@ -30,11 +30,11 @@ export default defineConfig(({ command }) => ({
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],
+        globPatterns: ['**/*.{js,css,html,woff2,png,jpg,svg}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: 'index.html',
         runtimeCaching: [

@@ -7,6 +7,7 @@ import { degToCompass } from '../../lib/geo'
 import { useApp } from '../AppContext'
 import { WxIcon } from '../icons'
 import { Button, EmptyState, InlineError, SectionLabel, Skeleton } from '../ui'
+import { CountUp, Reveal } from '../motion'
 import Explain from './Explain'
 import HourBars, { TIER_TEXT } from './HourBars'
 import RutRibbon from './RutRibbon'
@@ -98,7 +99,7 @@ export default function HuntCastView() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-baseline gap-3">
-                <span className="font-mono text-5xl leading-none tnum">{day.score}</span>
+                <CountUp value={day.score} className="font-mono text-5xl leading-none tnum" />
                 <span className={`text-lg font-semibold ${TIER_TEXT[day.tier]}`}>{TIERS[day.tier].label}</span>
               </div>
               <p className="mt-2 text-sm text-bone-200 leading-relaxed max-w-[56ch]">{day.headline}</p>
@@ -141,7 +142,7 @@ export default function HuntCastView() {
               <div>
                 <SectionLabel>{fmtHour(sel.time)}</SectionLabel>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="font-mono text-3xl tnum">{sel.score}</span>
+                  <CountUp value={sel.score} className="font-mono text-3xl tnum" duration={0.8} />
                   <span className={`text-sm font-semibold ${TIER_TEXT[sel.tier]}`}>{TIERS[sel.tier].label}</span>
                 </div>
               </div>
@@ -170,6 +171,7 @@ export default function HuntCastView() {
       </section>
 
       {/* Stand picks + rut */}
+      <Reveal>
       <section className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <StandPicks windDir={sel.hour.windDir} windMph={sel.hour.windMph} />
         <div>
@@ -192,6 +194,7 @@ export default function HuntCastView() {
           <p className="mt-2 text-[12px] text-bone-600 leading-relaxed">{peak.reason}</p>
         </div>
       </section>
+      </Reveal>
 
       <section className="border-t border-bone-50/8 pt-5">
         <button onClick={() => setShowExplain((v) => !v)} className="push flex items-center gap-2 text-sm font-medium text-bone-200 hover:text-bone-50" aria-expanded={showExplain}>
@@ -249,7 +252,7 @@ function ScoreRing({ score }: { score: number }) {
   return (
     <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden>
       <circle cx="20" cy="20" r={r} stroke="rgba(242,237,226,0.08)" strokeWidth="3" fill="none" />
-      <motion.circle cx="20" cy="20" r={r} stroke="#d4823d" strokeWidth="3" fill="none" strokeLinecap="round" strokeDasharray={c} initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - score / 100) }} transition={{ type: 'spring', stiffness: 60, damping: 16 }} transform="rotate(-90 20 20)" />
+      <motion.circle cx="20" cy="20" r={r} stroke="#e8702c" strokeWidth="3" fill="none" strokeLinecap="round" strokeDasharray={c} initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - score / 100) }} transition={{ type: 'spring', stiffness: 60, damping: 16 }} transform="rotate(-90 20 20)" />
       <text x="20" y="24" textAnchor="middle" fontSize="11" fontFamily="Geist Mono Variable, monospace" fill="#f2ede2">
         {score}
       </text>

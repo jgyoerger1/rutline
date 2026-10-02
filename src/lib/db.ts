@@ -2,13 +2,13 @@ import Dexie, { type EntityTable } from 'dexie'
 import type { Photo, Trail, Waypoint, WaypointType } from './types'
 import { makeThumb, readExifDate, shrinkImage } from './images'
 
-class DownwindDB extends Dexie {
+class RutlineDB extends Dexie {
   waypoints!: EntityTable<Waypoint, 'id'>
   photos!: EntityTable<Photo, 'id'>
   trails!: EntityTable<Trail, 'id'>
 
   constructor() {
-    super('downwind')
+    super('rutline')
     this.version(1).stores({
       waypoints: '++id, type, updatedAt',
       photos: '++id, waypointId, takenAt',
@@ -17,7 +17,7 @@ class DownwindDB extends Dexie {
   }
 }
 
-export const db = new DownwindDB()
+export const db = new RutlineDB()
 
 export async function addWaypoint(input: {
   type: WaypointType
@@ -117,7 +117,7 @@ interface BackupPhoto extends Omit<Photo, 'blob' | 'thumb'> {
 }
 
 export interface Backup {
-  app: 'downwind'
+  app: 'rutline'
   version: 1
   exportedAt: string
   waypoints: Waypoint[]
@@ -144,7 +144,7 @@ function base64ToBlob(b64: string, type = 'image/jpeg'): Blob {
 export async function exportBackup(): Promise<Blob> {
   const [waypoints, trails, photos] = await Promise.all([db.waypoints.toArray(), db.trails.toArray(), db.photos.toArray()])
   const out: Backup = {
-    app: 'downwind',
+    app: 'rutline',
     version: 1,
     exportedAt: new Date().toISOString(),
     waypoints,
@@ -162,7 +162,7 @@ export async function exportBackup(): Promise<Blob> {
 
 export async function importBackup(file: Blob, mode: 'merge' | 'replace'): Promise<{ waypoints: number; trails: number; photos: number }> {
   const parsed = JSON.parse(await file.text()) as Backup
-  if (parsed.app !== 'downwind') throw new Error('That file is not a Downwind backup.')
+  if (parsed.app !== 'rutline' && (parsed.app as string) !== 'downwind') throw new Error('That file is not a Rutline backup.')
   const idMap = new Map<number, number>()
   let photos = 0
   await db.transaction('rw', db.waypoints, db.trails, db.photos, async () => {

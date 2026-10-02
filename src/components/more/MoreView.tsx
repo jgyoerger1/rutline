@@ -74,10 +74,10 @@ export default function MoreView() {
         <div className="divide-y divide-bone-50/8">
           <Section title="Your data" body={counts ? `${counts.w} pins · ${counts.t} lines · ${counts.p} photos, all stored on this device. Back up before you switch phones.` : 'Counting...'}>
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => run('backup', async () => downloadBlob(await exportBackup(), `downwind-backup-${new Date().toISOString().slice(0, 10)}.json`))} disabled={!!busy}>
+              <Button onClick={() => run('backup', async () => downloadBlob(await exportBackup(), `rutline-backup-${new Date().toISOString().slice(0, 10)}.json`))} disabled={!!busy}>
                 <DownloadSimple size={16} /> Backup (with photos)
               </Button>
-              <Button variant="ghost" onClick={() => run('geo', async () => downloadBlob(await exportGeoJSON(), 'downwind-pins.geojson'))} disabled={!!busy}>
+              <Button variant="ghost" onClick={() => run('geo', async () => downloadBlob(await exportGeoJSON(), 'rutline-pins.geojson'))} disabled={!!busy}>
                 <Database size={16} /> GeoJSON
               </Button>
               <Button variant="ghost" onClick={() => { importMode.current = 'merge'; importRef.current?.click() }} disabled={!!busy}>
@@ -122,7 +122,7 @@ export default function MoreView() {
             </div>
           </Section>
 
-          <Section title="Put it on your iPhone" body="Downwind is a web app that installs like a native one: full screen, home-screen icon, works offline on ground you have already looked at.">
+          <Section title="Put it on your iPhone" body="Rutline is a web app that installs like a native one: full screen, home-screen icon, works offline on ground you have already looked at.">
             <ol className="text-sm text-bone-400 space-y-1.5 list-decimal pl-5 leading-relaxed">
               <li>Open this page in <span className="text-bone-50">Safari</span> (not Chrome).</li>
               <li>Tap the <span className="text-bone-50">Share</span> button, then <span className="text-bone-50">Add to Home Screen</span>.</li>
@@ -133,7 +133,7 @@ export default function MoreView() {
             </div>
           </Section>
 
-          <Section title="About" body="Downwind pulls weather from Open-Meteo, imagery from Esri, topo from USGS and streets from OpenStreetMap. Nothing you pin leaves your phone.">
+          <Section title="About" body="Rutline pulls weather from Open-Meteo, imagery from Esri, topo from USGS and streets from OpenStreetMap. Nothing you pin leaves your phone.">
             <div className="text-[12px] text-bone-600 font-mono">v{__APP_VERSION__}</div>
           </Section>
         </div>

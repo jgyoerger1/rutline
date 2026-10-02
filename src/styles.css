@@ -4,35 +4,36 @@
 @theme {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "Chakra Petch", "Geist Variable", ui-sans-serif, sans-serif;
 
-  /* Pine: a green-tinted charcoal lifted from the topo artwork. Never pure black. */
-  --color-pine-950: #0e1311;
-  --color-pine-900: #131a16;
-  --color-pine-850: #171f1a;
-  --color-pine-800: #1b2420;
-  --color-pine-700: #253129;
-  --color-pine-600: #334237;
-  --color-pine-500: #4b5a4f;
+  /* Pine: the collateral's charcoal with a breath of green. Never pure black. */
+  --color-pine-950: #0f1110;
+  --color-pine-900: #151816;
+  --color-pine-850: #191d1a;
+  --color-pine-800: #1d221f;
+  --color-pine-700: #282e2a;
+  --color-pine-600: #363d38;
+  --color-pine-500: #4d564f;
 
-  /* Bone: warm off-whites for text */
+  /* Bone: the antler whites */
   --color-bone-50: #f2ede2;
   --color-bone-200: #d6d0c3;
   --color-bone-400: #a9ad9f;
   --color-bone-600: #767d74;
   --color-bone-800: #4f564f;
 
-  /* Ember: the single accent. Hunter orange, desaturated to sit on pine. */
-  --color-ember-300: #eba868;
-  --color-ember-400: #e0914c;
-  --color-ember-500: #d4823d;
-  --color-ember-600: #b86b2c;
-  --color-ember-950: #2a1708;
+  /* Ember: the rut line. One accent. */
+  --color-ember-300: #f5a86b;
+  --color-ember-400: #f08a3f;
+  --color-ember-500: #e8702c;
+  --color-ember-600: #c4581f;
+  --color-ember-950: #2b1507;
 
-  /* Brass is ornament only (compass ring in the mark). Not a UI accent. */
+  /* Brass is ornament only */
   --color-brass-400: #c4ab74;
 
   --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --shadow-pine: 0 24px 48px -20px rgba(6, 10, 8, 0.7);
+  --shadow-pine: 0 24px 48px -20px rgba(6, 8, 7, 0.75);
 }
 
 :root {
@@ -51,6 +52,15 @@ body {
 
 .tnum { font-variant-numeric: tabular-nums; }
 
+/* Brand wordmark: RUT in bone, LINE in ember, wide industrial caps */
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
 /* Film grain: fixed, pointer-events none, never on a scrolling container */
 .grain {
   position: fixed;
@@ -64,11 +74,11 @@ body {
 
 /* Liquid glass panel: blur + 1px inner edge + inner highlight */
 .glass {
-  background: rgba(19, 26, 22, 0.72);
+  background: rgba(21, 24, 22, 0.72);
   backdrop-filter: blur(18px) saturate(120%);
   -webkit-backdrop-filter: blur(18px) saturate(120%);
   border: 1px solid rgba(242, 237, 226, 0.08);
-  box-shadow: inset 0 1px 0 rgba(242, 237, 226, 0.08), 0 20px 40px -24px rgba(6, 10, 8, 0.8);
+  box-shadow: inset 0 1px 0 rgba(242, 237, 226, 0.08), 0 20px 40px -24px rgba(6, 8, 7, 0.8);
 }
 
 /* Skeleton shimmer */
@@ -103,6 +113,30 @@ body {
 }
 @keyframes rise { to { opacity: 1; transform: translateY(0); } }
 
+/* Slow float for a hero glyph */
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.float { animation: float 4.5s ease-in-out infinite; }
+
+/* Topo backdrop drift: transform only */
+@keyframes drift-a { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-3%, 2%, 0); } }
+@keyframes drift-b { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(2.5%, -1.5%, 0); } }
+.drift-a { animation: drift-a 70s ease-in-out infinite alternate; }
+.drift-b { animation: drift-b 90s ease-in-out infinite alternate; }
+
+/* The rut line: dashed ember trail that flows */
+@keyframes dash-flow { to { stroke-dashoffset: -24; } }
+.rut-line { stroke-dasharray: 6 7; animation: dash-flow 1.8s linear infinite; }
+
+/* Tracker scan sweep */
+@keyframes scan { from { transform: translateY(-2%); } to { transform: translateY(102%); } }
+.scanline { animation: scan 2.8s linear infinite; }
+
+/* Pulsing dot (barometer now marker, map me marker) */
+@keyframes ring {
+  0% { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
 
@@ -120,7 +154,7 @@ body {
   outline: none;
 }
 .leaflet-control-attribution {
-  background: rgba(14, 19, 17, 0.7) !important;
+  background: rgba(15, 17, 16, 0.7) !important;
   color: var(--color-bone-600) !important;
   font-size: 10px !important;
   backdrop-filter: blur(8px);
@@ -139,8 +173,9 @@ body {
   background: var(--color-pine-900);
   color: var(--color-bone-50);
   border: 1px solid rgba(242, 237, 226, 0.14);
-  box-shadow: inset 0 1px 0 rgba(242, 237, 226, 0.08), 0 8px 18px -8px rgba(6, 10, 8, 0.9);
+  box-shadow: inset 0 1px 0 rgba(242, 237, 226, 0.08), 0 8px 18px -8px rgba(6, 8, 7, 0.9);
   transition: transform 0.25s var(--ease-expo), background 0.25s;
+  transform-origin: 50% 115%;
 }
 .dw-pin::after {
   content: "";
@@ -160,9 +195,22 @@ body {
   transform: scale(1.12);
 }
 .dw-pin.is-blood { color: var(--color-ember-300); }
+.dw-pin.is-new { animation: pin-drop 0.7s var(--ease-expo) both; }
+@keyframes pin-drop {
+  0% { transform: translateY(-18px) scale(0.4); opacity: 0; }
+  60% { transform: translateY(0) scale(1.15); opacity: 1; }
+  100% { transform: translateY(0) scale(1); }
+}
+.dw-pin.is-new.is-selected { animation-name: pin-drop-selected; }
+@keyframes pin-drop-selected {
+  0% { transform: translateY(-18px) scale(0.4); opacity: 0; }
+  60% { transform: translateY(0) scale(1.25); opacity: 1; }
+  100% { transform: translateY(0) scale(1.12); }
+}
 .dw-pin svg { width: 18px; height: 18px; }
 
 .dw-me {
+  position: relative;
   width: 16px;
   height: 16px;
   border-radius: 9999px;
@@ -170,15 +218,33 @@ body {
   border: 3px solid var(--color-pine-950);
   box-shadow: 0 0 0 2px var(--color-bone-50);
 }
+.dw-me::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  border: 2px solid rgba(242, 237, 226, 0.7);
+  animation: ring 2.2s ease-out infinite;
+}
 
-/* Wind needle spring handled by framer; keep transform origin centered */
+.scent-cone { stroke-dasharray: 5 6; animation: dash-flow 2.2s linear infinite; }
+
 .needle { transform-origin: 50% 50%; }
 
-/* Range inputs */
+/* Wind streaks inside the compass: translate only */
+@keyframes streak {
+  0% { transform: translateY(-34px); opacity: 0; }
+  20% { opacity: 0.9; }
+  80% { opacity: 0.6; }
+  100% { transform: translateY(34px); opacity: 0; }
+}
+.streak { animation: streak 1.9s linear infinite; }
+
 input[type="range"] { accent-color: var(--color-ember-500); }
 
 @media (prefers-reduced-motion: reduce) {
   .cascade > * { animation: none; opacity: 1; transform: none; }
-  .breathe { animation: none; }
+  .breathe, .float, .drift-a, .drift-b, .rut-line, .scent-cone, .scanline, .streak, .dw-me::after { animation: none; }
+  .dw-pin.is-new { animation: none; }
   .skeleton::after { animation: none; }
 }

@@ -24,9 +24,9 @@ type AddMode = { kind: 'point'; type: WaypointType } | { kind: 'trail'; trail: T
 
 const TRAIL_STYLE: Record<TrailKind, L.PathOptions> = {
   trail: { color: '#d6d0c3', weight: 3, opacity: 0.9 },
-  entry: { color: '#d4823d', weight: 3, dashArray: '8 6', opacity: 0.95 },
-  exit: { color: '#d4823d', weight: 3, dashArray: '2 7', opacity: 0.95 },
-  drag: { color: '#eba868', weight: 4, opacity: 0.95 },
+  entry: { color: '#e8702c', weight: 3, dashArray: '8 6', opacity: 0.95 },
+  exit: { color: '#e8702c', weight: 3, dashArray: '2 7', opacity: 0.95 },
+  drag: { color: '#f5a86b', weight: 4, opacity: 0.95 },
 }
 
 export default function MapView({ active }: { active: boolean }) {
@@ -148,13 +148,15 @@ export default function MapView({ active }: { active: boolean }) {
           <Polyline key={t.id} positions={t.points} pathOptions={{ ...TRAIL_STYLE[t.kind], weight: selectedTrail === t.id ? (TRAIL_STYLE[t.kind].weight as number) + 2 : TRAIL_STYLE[t.kind].weight }} eventHandlers={{ click: () => { setSelectedTrail(t.id!); setSelectedId(null) } }} />
         ))}
 
-        {cone && <Polygon positions={cone} pathOptions={{ color: '#eba868', weight: 1.5, opacity: 0.9, fillColor: '#d4823d', fillOpacity: 0.28, dashArray: '4 4' }} interactive={false} />}
+        {cone && <Polygon positions={cone} pathOptions={{ color: '#f5a86b', weight: 1.5, opacity: 0.9, fillColor: '#e8702c', fillOpacity: 0.26, className: 'scent-cone' }} interactive={false} />}
 
-        {visible.map((w) => (
+        {visible.map((w) => {
+          const isNew = Date.now() - w.createdAt < 4000
+          return (
           <Marker
-            key={`${w.id}-${w.type}-${w.id === selectedId ? 's' : ''}`}
+            key={`${w.id}-${w.type}-${w.id === selectedId ? 's' : ''}${isNew ? '-n' : ''}`}
             position={[w.lat, w.lon]}
-            icon={L.divIcon({ className: '', html: markerHtml(w.type, w.id === selectedId), iconSize: [36, 36], iconAnchor: [18, 41] })}
+            icon={L.divIcon({ className: '', html: markerHtml(w.type, w.id === selectedId, isNew), iconSize: [36, 36], iconAnchor: [18, 41] })}
             draggable={w.id === selectedId}
             eventHandlers={{
               click: () => {
@@ -168,7 +170,8 @@ export default function MapView({ active }: { active: boolean }) {
             }}
             zIndexOffset={w.id === selectedId ? 1000 : 0}
           />
-        ))}
+          )
+        })}
 
         {addMode?.kind === 'trail' && addMode.points.length > 0 && (
           <>
