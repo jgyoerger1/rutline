@@ -5,7 +5,7 @@ Rutline runs on the device until you connect a Supabase project. Once connected,
 ## 1. Create the project
 
 1. Sign up at https://supabase.com and create a new project. Pick the East US region and a strong database password (you will not need it again for this app).
-2. In **Project Settings → API**, copy the **Project URL** and the **anon public** key. The anon key is meant to be public; row-level security is what protects the data.
+2. In **Project Settings → API Keys**, copy the **Publishable key** (starts with `sb_publishable_`). On older projects it is listed under **Legacy API keys** as **anon** (starts with `eyJ`); either works, the publishable key is the current one. Never use a key labelled **secret** or **service_role** in the app. The **Project URL** (`https://xxxx.supabase.co`) is under **Project Settings → Data API**. The publishable/anon key is meant to be public; row-level security is what protects the data.
 
 ## 2. Create the tables
 
@@ -34,7 +34,7 @@ In the GitHub repo: **Settings → Secrets and variables → Actions → Variabl
 | Name | Value |
 |---|---|
 | `VITE_SUPABASE_URL` | the Project URL |
-| `VITE_SUPABASE_ANON_KEY` | the anon public key |
+| `VITE_SUPABASE_ANON_KEY` | the publishable key (or legacy anon key) |
 | `VITE_AUTH_PROVIDERS` | blank, or `google` |
 
 Then **Actions → Deploy to GitHub Pages → Run workflow**, or push any commit. The next build shows the sign-in page.
