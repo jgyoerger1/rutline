@@ -1,0 +1,153 @@
+import { useLiveQuery } from 'dexie-react-hooks'
+import { AppleLogo, Database, DownloadSimple, Trash, UploadSimple } from '@phosphor-icons/react'
+import { useRef, useState } from 'react'
+import { clearAll, db, exportBackup, exportGeoJSON, importBackup } from '../../lib/db'
+import { defaultPeakRut, seasonYear } from '../../lib/rut'
+import { downloadBlob } from '../../lib/useGeo'
+import { useApp } from '../AppContext'
+import HomePicker from '../HomePicker'
+import { Button, Field, SectionLabel, Segmented } from '../ui'
+
+export default function MoreView() {
+  const { settings, setSettings, home, toast, peak } = useApp()
+  const counts = useLiveQuery(async () => ({ w: await db.waypoints.count(), p: await db.photos.count(), t: await db.trails.count() }), [])
+  const [busy, setBusy] = useState<string | null>(null)
+  const importRef = useRef<HTMLInputElement>(null)
+  const importMode = useRef<'merge' | 'replace'>('merge')
+
+  const guess = home ? defaultPeakRut(home.lat, home.lon, seasonYear(new Date())) : null
+  const overrideValue = settings.rutPeakOverride ? `${seasonYear(new Date()) + (settings.rutPeakOverride.startsWith('01') || settings.rutPeakOverride.startsWith('02') ? 1 : 0)}-${settings.rutPeakOverride}` : ''
+
+  async function run(label: string, fn: () => Promise<void>) {
+    setBusy(label)
+    try {
+      await fn()
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Something went wrong')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-5 md:py-8 pb-16">
+      <SectionLabel>Settings</SectionLabel>
+      <h1 className="mt-1 text-2xl md:text-3xl font-semibold tracking-tight">Your ground, your rules</h1>
+
+      <div className="mt-8 grid gap-x-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="divide-y divide-bone-50/8">
+          <Section title="Home ground" body={home ? `${home.label} · ${home.lat.toFixed(4)}, ${home.lon.toFixed(4)}` : 'Not set. Weather and HuntCast wait on this.'}>
+            <HomePicker compact onPick={(h) => { setSettings({ home: h }); toast(`Home ground set: ${h.label}`) }} />
+          </Section>
+
+          <Section title="Units">
+            <Segmented id="units" value={settings.units} onChange={(units) => setSettings({ units })} options={[{ value: 'imperial', label: '°F · mph · inHg' }, { value: 'metric', label: '°C · km/h · hPa' }]} />
+          </Section>
+
+          <Section title="Peak rut" body={guess ? `Assumed ${guess.date.toLocaleDateString([], { month: 'long', day: 'numeric' })} from your latitude (${guess.confidence} confidence). ${guess.reason}` : 'Set a home ground to get a default.'}>
+            <Field label="Peak breeding date" helper="Check your state wildlife agency's conception map. The phases shift around this date.">
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={overrideValue}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setSettings({ rutPeakOverride: v ? v.slice(5) : null })
+                  }}
+                  className="flex-1 h-11 px-3.5 rounded-xl bg-pine-900 border border-bone-50/10 text-bone-50 outline-none focus:border-ember-500/60 font-mono text-sm"
+                />
+                {settings.rutPeakOverride && (
+                  <Button variant="ghost" onClick={() => setSettings({ rutPeakOverride: null })}>
+                    Use default
+                  </Button>
+                )}
+              </div>
+            </Field>
+            {peak && <div className="mt-2 text-[12px] text-bone-600">In use: {peak.date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}</div>}
+          </Section>
+
+          <Section title="Legal light" body="Minutes before sunrise and after sunset that count as shooting light. Most states use 30.">
+            <Segmented id="legal" value={String(settings.legalLightMinutes) as '0' | '30' | '60'} onChange={(v) => setSettings({ legalLightMinutes: Number(v) })} options={[{ value: '0', label: 'Sunrise to sunset' }, { value: '30', label: '30 min' }, { value: '60', label: '60 min' }]} />
+          </Section>
+        </div>
+
+        <div className="divide-y divide-bone-50/8">
+          <Section title="Your data" body={counts ? `${counts.w} pins · ${counts.t} lines · ${counts.p} photos, all stored on this device. Back up before you switch phones.` : 'Counting...'}>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => run('backup', async () => downloadBlob(await exportBackup(), `downwind-backup-${new Date().toISOString().slice(0, 10)}.json`))} disabled={!!busy}>
+                <DownloadSimple size={16} /> Backup (with photos)
+              </Button>
+              <Button variant="ghost" onClick={() => run('geo', async () => downloadBlob(await exportGeoJSON(), 'downwind-pins.geojson'))} disabled={!!busy}>
+                <Database size={16} /> GeoJSON
+              </Button>
+              <Button variant="ghost" onClick={() => { importMode.current = 'merge'; importRef.current?.click() }} disabled={!!busy}>
+                <UploadSimple size={16} /> Restore (merge)
+              </Button>
+              <Button variant="ghost" onClick={() => { importMode.current = 'replace'; importRef.current?.click() }} disabled={!!busy}>
+                <UploadSimple size={16} /> Restore (replace)
+              </Button>
+              <input
+                ref={importRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (!f) return
+                  const mode = importMode.current
+                  if (mode === 'replace' && !confirm('Replace everything on this device with the backup?')) return
+                  void run('import', async () => {
+                    const r = await importBackup(f, mode)
+                    toast(`Restored ${r.waypoints} pins, ${r.trails} lines, ${r.photos} photos`)
+                  })
+                  e.target.value = ''
+                }}
+              />
+            </div>
+            <div className="mt-4">
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => {
+                  if (!confirm('Delete every pin, line and photo on this device? This cannot be undone.')) return
+                  void run('clear', async () => {
+                    await clearAll()
+                    toast('All data cleared')
+                  })
+                }}
+                disabled={!!busy}
+              >
+                <Trash size={15} /> Clear all data
+              </Button>
+            </div>
+          </Section>
+
+          <Section title="Put it on your iPhone" body="Downwind is a web app that installs like a native one: full screen, home-screen icon, works offline on ground you have already looked at.">
+            <ol className="text-sm text-bone-400 space-y-1.5 list-decimal pl-5 leading-relaxed">
+              <li>Open this page in <span className="text-bone-50">Safari</span> (not Chrome).</li>
+              <li>Tap the <span className="text-bone-50">Share</span> button, then <span className="text-bone-50">Add to Home Screen</span>.</li>
+              <li>Open it from the icon. Allow location and camera when asked.</li>
+            </ol>
+            <div className="mt-3 inline-flex items-center gap-2 text-[12px] text-bone-600">
+              <AppleLogo size={14} /> Photos and pins live in the installed app's own storage. Use Backup to move them.
+            </div>
+          </Section>
+
+          <Section title="About" body="Downwind pulls weather from Open-Meteo, imagery from Esri, topo from USGS and streets from OpenStreetMap. Nothing you pin leaves your phone.">
+            <div className="text-[12px] text-bone-600 font-mono">v{__APP_VERSION__}</div>
+          </Section>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Section({ title, body, children }: { title: string; body?: string; children: React.ReactNode }) {
+  return (
+    <section className="py-7 first:pt-0">
+      <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+      {body && <p className="mt-1 text-[13px] text-bone-400 leading-relaxed max-w-[60ch]">{body}</p>}
+      <div className="mt-4">{children}</div>
+    </section>
+  )
+}
