@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowUp, Check, GpsFix, List, MapPin, Path, Plus, X } from '@phosphor-icons/react'
+import { ArrowUp, Check, GpsFix, List, MapPin, Path, Plus, Polygon as ParcelsIcon, X } from '@phosphor-icons/react'
 import L from 'leaflet'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
@@ -8,10 +8,14 @@ import { addTrail, addWaypoint, db, deleteTrail } from '../../lib/db'
 import { degToCompass, fmtDistance, haversineM } from '../../lib/geo'
 import { TRAIL_KINDS, WAYPOINT_ORDER, WAYPOINT_TYPES, type MapLayer, type Trail, type TrailKind, type Waypoint, type WaypointType } from '../../lib/types'
 import { useWatchPosition } from '../../lib/useGeo'
+import { boundsOf, type Parcel } from '../../lib/parcels'
 import { nowIndex } from '../../lib/weather'
 import { useApp } from '../AppContext'
 import { markerHtml, TYPE_ICON } from '../icons'
 import { Button, Chip, IconButton, Input, SectionLabel, Segmented, Sheet } from '../ui'
+import LetterSheet, { type LetterTarget } from './LetterSheet'
+import ParcelLayer, { type ParcelStatus } from './ParcelLayer'
+import ParcelSheet from './ParcelSheet'
 import WaypointSheet from './WaypointSheet'
 
 const LAYERS: Record<MapLayer, { url: string; attribution: string; maxNativeZoom: number }> = {
@@ -41,6 +45,10 @@ export default function MapView({ active }: { active: boolean }) {
   const [filter, setFilter] = useState<Set<WaypointType>>(new Set())
   const [watch, setWatch] = useState(false)
   const [dismissHint, setDismissHint] = useState(false)
+  const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null)
+  const [parcelStatus, setParcelStatus] = useState<ParcelStatus>({ state: 'off', count: 0, truncated: false, sources: [] })
+  const [letter, setLetter] = useState<LetterTarget | null>(null)
+  const onParcelStatus = useCallback((s: ParcelStatus) => setParcelStatus(s), [])
   const { fix, error: geoError } = useWatchPosition(watch)
   const mapRef = useRef<L.Map | null>(null)
 
@@ -85,6 +93,7 @@ export default function MapView({ active }: { active: boolean }) {
       if (!addMode) {
         setSelectedId(null)
         setSelectedTrail(null)
+        setSelectedParcel(null)
         return
       }
       if (addMode.kind === 'point') void placePoint(addMode.type, lat, lon)
@@ -139,10 +148,22 @@ export default function MapView({ active }: { active: boolean }) {
     <div className="relative w-full h-full">
       {/* Leaflet stacks its panes at z-index 400-1000; isolate them so app overlays sit above the map */}
       <div className="absolute inset-0 isolate z-0">
-      <MapContainer center={center} zoom={zoom} zoomControl={false} attributionControl className="w-full h-full" ref={mapRef as never} maxZoom={20}>
+      <MapContainer center={center} zoom={zoom} zoomControl={false} attributionControl className="w-full h-full" ref={mapRef as never} maxZoom={20} preferCanvas>
         <TileLayer key={settings.mapLayer} url={layer.url} attribution={layer.attribution} maxNativeZoom={layer.maxNativeZoom} maxZoom={20} />
         <MapEvents onClick={onMapClick} />
         <FlyToHome home={home} />
+        <ParcelLayer
+          enabled={settings.parcelsEnabled}
+          custom={settings.customParcelSource}
+          interactive={!addMode}
+          selectedKey={selectedParcel?.key ?? null}
+          onSelect={(p) => {
+            setSelectedParcel(p)
+            setSelectedId(null)
+            setSelectedTrail(null)
+          }}
+          onStatus={onParcelStatus}
+        />
 
         {(trails ?? []).map((t) => (
           <Polyline key={t.id} positions={t.points} pathOptions={{ ...TRAIL_STYLE[t.kind], weight: selectedTrail === t.id ? (TRAIL_STYLE[t.kind].weight as number) + 2 : TRAIL_STYLE[t.kind].weight }} eventHandlers={{ click: () => { setSelectedTrail(t.id!); setSelectedId(null) } }} />
@@ -162,6 +183,7 @@ export default function MapView({ active }: { active: boolean }) {
               click: () => {
                 setSelectedId(w.id!)
                 setSelectedTrail(null)
+                setSelectedParcel(null)
               },
               dragend: (e) => {
                 const ll = (e.target as L.Marker).getLatLng()
@@ -200,6 +222,21 @@ export default function MapView({ active }: { active: boolean }) {
             <span className="font-mono text-bone-400 tnum">{Math.round(settings.units === 'metric' ? now.windMph * 1.60934 : now.windMph)} {settings.units === 'metric' ? 'km/h' : 'mph'}</span>
           </button>
         )}
+        <button
+          onClick={() => setSettings({ parcelsEnabled: !settings.parcelsEnabled })}
+          aria-pressed={settings.parcelsEnabled}
+          title="Property lines"
+          className={`push pointer-events-auto glass rounded-xl h-11 px-3 inline-flex items-center gap-2 text-sm ${settings.parcelsEnabled ? 'text-bone-50' : 'text-bone-400'}`}
+        >
+          <ParcelsIcon size={16} weight={settings.parcelsEnabled ? 'fill' : 'regular'} className={settings.parcelsEnabled ? 'text-ember-400' : ''} />
+          <span className="font-medium">Lines</span>
+          {settings.parcelsEnabled && (
+            <span className="font-mono text-[11px] text-bone-400 tnum inline-flex items-center gap-1.5">
+              {parcelStatus.state === 'loading' && <span className="w-1.5 h-1.5 rounded-full bg-ember-400 breathe" />}
+              {parcelStatus.state === 'zoom' ? 'zoom in' : parcelStatus.state === 'ready' ? `${parcelStatus.count}${parcelStatus.truncated ? '+' : ''}` : parcelStatus.state === 'empty' ? 'none here' : parcelStatus.state === 'nosource' ? 'no source' : parcelStatus.state === 'error' ? 'offline' : ''}
+            </span>
+          )}
+        </button>
         <div className="ml-auto pointer-events-auto">
           <Segmented id="layer" value={settings.mapLayer} onChange={(mapLayer) => setSettings({ mapLayer })} options={[{ value: 'satellite', label: 'Sat' }, { value: 'topo', label: 'Topo' }, { value: 'streets', label: 'Streets' }]} className="glass" />
         </div>
@@ -367,7 +404,20 @@ export default function MapView({ active }: { active: boolean }) {
       {/* Pins list */}
       <PinList open={listOpen} onClose={() => setListOpen(false)} waypoints={waypoints ?? []} trails={trails ?? []} me={fix} onPick={(w) => { setListOpen(false); setSelectedId(w.id!); mapRef.current?.flyTo([w.lat, w.lon], Math.max(mapRef.current.getZoom(), 16), { duration: 0.8 }) }} onPickTrail={(t) => { setListOpen(false); setSelectedTrail(t.id!); mapRef.current?.fitBounds(L.latLngBounds(t.points), { padding: [60, 60] }) }} />
 
-      <WaypointSheet waypoint={selected} me={fix} windDir={now?.windDir} onClose={() => setSelectedId(null)} />
+      <WaypointSheet waypoint={selected} me={fix} windDir={now?.windDir} onClose={() => setSelectedId(null)} onLetter={(t) => setLetter(t)} />
+
+      <ParcelSheet
+        parcel={selectedParcel}
+        onClose={() => setSelectedParcel(null)}
+        onCenter={(p) => mapRef.current?.fitBounds(L.latLngBounds(boundsOf(p.geometry)), { padding: [48, 48] })}
+        onLetter={(t) => setLetter(t)}
+        onSaved={(id) => {
+          setSelectedParcel(null)
+          setSelectedId(id)
+        }}
+      />
+
+      <LetterSheet target={letter} onClose={() => setLetter(null)} />
 
       <TrailSheet trail={trails?.find((t) => t.id === selectedTrail) ?? null} onClose={() => setSelectedTrail(null)} />
     </div>

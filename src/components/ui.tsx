@@ -59,6 +59,13 @@ export function Field({ label, helper, error, children, className = '' }: { labe
   )
 }
 
+const sheetStack: Array<{ close: () => void }> = []
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sheetStack.length) sheetStack[sheetStack.length - 1].close()
+  })
+}
+
 const INPUT = 'w-full h-11 px-3.5 rounded-xl bg-pine-900 border border-bone-50/10 text-bone-50 placeholder:text-bone-600 outline-none focus:border-ember-500/60 focus:ring-2 focus:ring-ember-500/15 transition-colors'
 
 export function Input({ className = '', ...rest }: InputHTMLAttributes<HTMLInputElement>) {
@@ -112,12 +119,18 @@ export function Sheet({ open, onClose, title, children, footer, scrollKey }: { o
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = 0
   }, [scrollKey, open])
+  // Escape closes only the sheet on top of the stack
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+    const entry = { close: () => closeRef.current() }
+    sheetStack.push(entry)
+    return () => {
+      const i = sheetStack.indexOf(entry)
+      if (i >= 0) sheetStack.splice(i, 1)
+    }
+  }, [open])
   return (
     <AnimatePresence>
       {open && (

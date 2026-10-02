@@ -6,7 +6,9 @@ import { defaultPeakRut, seasonYear } from '../../lib/rut'
 import { downloadBlob } from '../../lib/useGeo'
 import { useApp } from '../AppContext'
 import HomePicker from '../HomePicker'
-import { Button, Field, SectionLabel, Segmented } from '../ui'
+import CustomSourceForm from './CustomSourceForm'
+import { COUNTY_SOURCES } from '../../lib/parcels'
+import { Button, Field, Input, SectionLabel, Segmented } from '../ui'
 
 export default function MoreView() {
   const { settings, setSettings, home, toast, peak } = useApp()
@@ -72,6 +74,32 @@ export default function MoreView() {
         </div>
 
         <div className="divide-y divide-bone-50/8">
+          <Section title="Property lines" body="Boundaries and owner mailing addresses come from Ohio's statewide parcel service for all 88 counties. Owner names are added where the county publishes them.">
+            <Segmented id="parcels" value={settings.parcelsEnabled ? 'on' : 'off'} onChange={(v) => setSettings({ parcelsEnabled: v === 'on' })} options={[{ value: 'on', label: 'Show lines' }, { value: 'off', label: 'Hide' }]} />
+            <div className="mt-4 text-[13px] text-bone-400 leading-relaxed">
+              <div className="text-bone-50 font-medium">Owner names built in</div>
+              {COUNTY_SOURCES.map((s) => s.shortLabel).join(', ')}. Elsewhere in Ohio you get lines, site address, acres and the tax mailing address; names need the county's own site. Lines draw once you zoom in close.
+            </div>
+            <div className="mt-5">
+              <SectionLabel className="mb-2">Add your county's layer</SectionLabel>
+              <CustomSourceForm />
+            </div>
+          </Section>
+
+          <Section title="You, for permission letters" body="Filled into the letter template. Stays on this device.">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Field label="Name">
+                <Input value={settings.hunter.name} onChange={(e) => setSettings({ hunter: { ...settings.hunter, name: e.target.value } })} placeholder="Full name" />
+              </Field>
+              <Field label="Phone">
+                <Input value={settings.hunter.phone} onChange={(e) => setSettings({ hunter: { ...settings.hunter, phone: e.target.value } })} placeholder="(330) 555-0142" inputMode="tel" />
+              </Field>
+              <Field label="Email">
+                <Input value={settings.hunter.email} onChange={(e) => setSettings({ hunter: { ...settings.hunter, email: e.target.value } })} placeholder="you@example.com" inputMode="email" />
+              </Field>
+            </div>
+          </Section>
+
           <Section title="Your data" body={counts ? `${counts.w} pins · ${counts.t} lines · ${counts.p} photos, all stored on this device. Back up before you switch phones.` : 'Counting...'}>
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => run('backup', async () => downloadBlob(await exportBackup(), `rutline-backup-${new Date().toISOString().slice(0, 10)}.json`))} disabled={!!busy}>

@@ -12,13 +12,17 @@ const DEFAULTS: Settings = {
   trackerColor: 'red',
   trackerSound: true,
   legalLightMinutes: 30,
+  parcelsEnabled: true,
+  customParcelSource: null,
+  hunter: { name: '', phone: '', email: '' },
 }
 
 function load(): Settings {
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return DEFAULTS
-    return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Settings>) }
+    const parsed = JSON.parse(raw) as Partial<Settings>
+    return { ...DEFAULTS, ...parsed, hunter: { ...DEFAULTS.hunter, ...(parsed.hunter ?? {}) } }
   } catch {
     return DEFAULTS
   }

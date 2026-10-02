@@ -30,7 +30,7 @@ export const WAYPOINT_TYPES: Record<WaypointType, WaypointMeta> = {
   food: { label: 'Food source', plural: 'Food', hint: 'Plot, oaks, ag edge, feeder' },
   water: { label: 'Water', plural: 'Water', hint: 'Creek crossing, pond, seep' },
   funnel: { label: 'Funnel', plural: 'Funnels', hint: 'Pinch point, saddle, inside corner' },
-  access: { label: 'Access', plural: 'Access', hint: 'Parking, gate, entry point' },
+  access: { label: 'Access', plural: 'Access', hint: 'Parking, gate, entry point, landowner' },
   blood: { label: 'Blood sign', plural: 'Blood', hint: 'Dropped from the tracker' },
   other: { label: 'Other', plural: 'Other', hint: 'Anything else worth a pin' },
 }
@@ -38,6 +38,18 @@ export const WAYPOINT_TYPES: Record<WaypointType, WaypointMeta> = {
 export const WAYPOINT_ORDER: WaypointType[] = [
   'stand', 'blind', 'camera', 'scrape', 'rub', 'bedding', 'food', 'water', 'funnel', 'access', 'blood', 'other',
 ]
+
+/** Landowner record copied from a parcel onto a pin */
+export interface OwnerInfo {
+  name: string
+  mailAddress: string
+  parcelId: string
+  county: string
+  situs: string
+  acres: number | null
+  source: string
+  savedAt: number
+}
 
 export interface Waypoint {
   id?: number
@@ -48,6 +60,7 @@ export interface Waypoint {
   note: string
   /** Compass points (N, NE, ...) that are huntable from this spot */
   goodWinds: string[]
+  owner?: OwnerInfo | null
   createdAt: number
   updatedAt: number
 }
@@ -95,6 +108,39 @@ export interface HomeGround {
   label: string
 }
 
+/** How a parcel layer's attributes map onto Rutline's parcel record */
+export interface ParcelFieldMap {
+  parcelId?: string
+  owner?: string
+  owner2?: string
+  mailName?: string
+  /** One field holding the whole mailing address */
+  mailAddress?: string
+  /** Or several fields joined with commas (street, city, state, zip) */
+  mailParts?: string[]
+  situs?: string
+  acres?: string
+  landUse?: string
+  county?: string
+  link?: string
+}
+
+export interface CustomParcelSource {
+  label: string
+  url: string
+  /** County name as the statewide layer spells it, so its rows can be replaced; blank = unknown */
+  county: string
+  fields: ParcelFieldMap
+  /** [west, south, east, north] from the layer's metadata, null = unknown */
+  extent: [number, number, number, number] | null
+}
+
+export interface HunterProfile {
+  name: string
+  phone: string
+  email: string
+}
+
 export interface Settings {
   home: HomeGround | null
   units: Units
@@ -105,6 +151,9 @@ export interface Settings {
   trackerColor: TrackerColor
   trackerSound: boolean
   legalLightMinutes: number
+  parcelsEnabled: boolean
+  customParcelSource: CustomParcelSource | null
+  hunter: HunterProfile
 }
 
 export interface HourData {

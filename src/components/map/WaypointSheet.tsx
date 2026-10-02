@@ -1,4 +1,4 @@
-import { ArrowSquareOut, CopySimple, Trash } from '@phosphor-icons/react'
+import { ArrowSquareOut, CopySimple, EnvelopeSimple, Trash } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 import { deleteWaypoint, updateWaypoint } from '../../lib/db'
 import { fmtDateTime } from '../../lib/format'
@@ -7,10 +7,11 @@ import { WAYPOINT_ORDER, WAYPOINT_TYPES, type Waypoint, type WaypointType } from
 import { useApp } from '../AppContext'
 import { TYPE_ICON } from '../icons'
 import { Button, Field, Input, SectionLabel, Sheet, Textarea } from '../ui'
+import type { LetterTarget } from './LetterSheet'
 import PhotoGallery from './PhotoGallery'
 import WindPicker from './WindPicker'
 
-export default function WaypointSheet({ waypoint, me, windDir, onClose }: { waypoint: Waypoint | null; me: { lat: number; lon: number } | null; windDir?: number; onClose: () => void }) {
+export default function WaypointSheet({ waypoint, me, windDir, onClose, onLetter }: { waypoint: Waypoint | null; me: { lat: number; lon: number } | null; windDir?: number; onClose: () => void; onLetter?: (t: LetterTarget) => void }) {
   const { toast, settings } = useApp()
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
@@ -126,6 +127,25 @@ export default function WaypointSheet({ waypoint, me, windDir, onClose }: { wayp
                 }}
                 windDir={windDir}
               />
+            </div>
+          )}
+
+          {w.owner && (
+            <div className="rounded-2xl border border-bone-50/10 bg-pine-900/70 p-4">
+              <div className="flex items-center justify-between">
+                <SectionLabel>Landowner</SectionLabel>
+                <button onClick={() => void save({ owner: null })} className="text-[12px] text-bone-600 hover:text-bone-200">
+                  Remove
+                </button>
+              </div>
+              <div className="mt-1 text-base font-semibold tracking-tight">{w.owner.name || 'Name not published'}</div>
+              {w.owner.mailAddress && <div className="text-sm text-bone-200 mt-0.5">{w.owner.mailAddress}</div>}
+              <div className="text-[11.5px] text-bone-600 mt-1 font-mono tnum">{[w.owner.county ? `${w.owner.county} County` : '', w.owner.parcelId, w.owner.acres != null ? `${w.owner.acres} ac` : ''].filter(Boolean).join(' · ')}</div>
+              {onLetter && (
+                <Button size="sm" variant="primary" className="mt-3" onClick={() => onLetter({ name: w.owner!.name, mailAddress: w.owner!.mailAddress, parcelId: w.owner!.parcelId, county: w.owner!.county, situs: w.owner!.situs })}>
+                  <EnvelopeSimple size={15} /> Permission letter
+                </Button>
+              )}
             </div>
           )}
 
