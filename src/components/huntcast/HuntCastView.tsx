@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { CaretDown, MapPin, PawPrint } from '@phosphor-icons/react'
+import { CaretDown, MapPin } from '@phosphor-icons/react'
 import { useEffect, useMemo, useState } from 'react'
 import { TIERS, type DayScore, type HourScore } from '../../lib/huntcast'
 import { fmtHour, fmtTemp, fmtTime, wxCode } from '../../lib/format'
@@ -8,6 +8,7 @@ import { useApp } from '../AppContext'
 import { WxIcon } from '../icons'
 import { Button, EmptyState, InlineError, SectionLabel, Skeleton } from '../ui'
 import { CountUp, Reveal } from '../motion'
+import HoofIcon from '../HoofIcon'
 import Explain from './Explain'
 import HourBars, { TIER_TEXT } from './HourBars'
 import RutRibbon from './RutRibbon'
@@ -198,7 +199,7 @@ export default function HuntCastView() {
 
       <section className="border-t border-bone-50/8 pt-5">
         <button onClick={() => setShowExplain((v) => !v)} className="push flex items-center gap-2 text-sm font-medium text-bone-200 hover:text-bone-50" aria-expanded={showExplain}>
-          <PawPrint size={16} weight="duotone" className="text-ember-400" />
+          <HoofIcon size={16} weight="fill" className="text-ember-400" />
           How HuntCast scores an hour
           <CaretDown size={14} className={`transition-transform ${showExplain ? 'rotate-180' : ''}`} />
         </button>

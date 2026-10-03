@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { CloudArrowUp, CloudCheck, CloudSlash, CloudWarning, MapTrifold, PawPrint, Scan, SlidersHorizontal, Wind } from '@phosphor-icons/react'
+import { CloudArrowUp, CloudCheck, CloudSlash, CloudWarning, MapTrifold, Scan, SlidersHorizontal, Wind, type IconWeight } from '@phosphor-icons/react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { AppCtx, useApp, type AppState, type View } from './components/AppContext'
 import Onboarding from './components/Onboarding'
+import HoofIcon from './components/HoofIcon'
 import SignIn from './components/auth/SignIn'
 import MapView from './components/map/MapView'
 import { PageTransition, Splash, TopoBackdrop, Wordmark } from './components/motion'
@@ -21,10 +22,12 @@ const HuntCastView = lazy(() => import('./components/huntcast/HuntCastView'))
 const TrackerView = lazy(() => import('./components/tracker/TrackerView'))
 const MoreView = lazy(() => import('./components/more/MoreView'))
 
-const VIEWS: Array<{ id: View; label: string; Icon: typeof MapTrifold }> = [
+type NavIcon = React.ComponentType<{ size?: number | string; weight?: IconWeight; className?: string }>
+
+const VIEWS: Array<{ id: View; label: string; Icon: NavIcon }> = [
   { id: 'map', label: 'Map', Icon: MapTrifold },
   { id: 'forecast', label: 'Wind', Icon: Wind },
-  { id: 'huntcast', label: 'Predict', Icon: PawPrint },
+  { id: 'huntcast', label: 'Predict', Icon: HoofIcon },
   { id: 'tracker', label: 'Track', Icon: Scan },
   { id: 'more', label: 'More', Icon: SlidersHorizontal },
 ]
