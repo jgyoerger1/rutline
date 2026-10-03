@@ -454,7 +454,9 @@ export default function MapView({ active }: { active: boolean }) {
 }
 
 function MapEvents({ onClick }: { onClick: (lat: number, lon: number) => void }) {
-  useMapEvents({ click: (e) => onClick(e.latlng.lat, e.latlng.lng) })
+  const map = useMapEvents({ click: (e) => onClick(e.latlng.lat, e.latlng.lng) })
+  // Dev builds expose the map for console debugging
+  if (import.meta.env.DEV) (window as unknown as { __map?: L.Map }).__map = map
   return null
 }
 

@@ -87,6 +87,8 @@ export default function ParcelLayer({ enabled, custom, interactive, selectedKey,
         key={batch.id}
         data={data}
         style={() => BASE_STYLE}
+        // Parcels redraw on every pan; keep them under trails and their tap targets
+        eventHandlers={{ add: (e) => (e.target as L.GeoJSON).bringToBack() }}
         onEachFeature={(feature, layer) => {
           layer.on('click', (e: L.LeafletMouseEvent) => {
             if (!interactiveRef.current) return
