@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rutline privacy policy</title>
+    <meta name="color-scheme" content="dark" />
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; background: #0f1110; color: #f2ede2; font: 16px/1.6 -apple-system, "Segoe UI", system-ui, sans-serif; }
+      main { max-width: 720px; margin: 0 auto; padding: 48px 20px 80px; }
+      h1 { font-size: 28px; letter-spacing: -0.02em; margin: 0 0 4px; }
+      h2 { font-size: 17px; margin: 32px 0 8px; color: #f2ede2; }
+      p, li { color: #d6d0c3; }
+      .muted { color: #767d74; font-size: 13px; }
+      a { color: #f08a3f; }
+      ul { padding-left: 20px; }
+      .mark { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+      .mark img { width: 40px; height: 40px; border-radius: 10px; }
+      .mark b { font-family: "Chakra Petch", "Segoe UI", sans-serif; letter-spacing: 0.06em; text-transform: uppercase; }
+      .mark b span { color: #e8702c; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark"><img src="icons/icon-192.png" alt="" /><b>Rut<span>line</span></b></div>
+      <h1>Privacy policy</h1>
+      <p class="muted">Effective October 2, 2026</p>
+
+      <p>Rutline is a hunting map, weather and tracking app. This page explains what it stores and where.</p>
+
+      <h2>What stays on your device</h2>
+      <p>Your pins, trails, photos, landowner notes and settings are stored in the app's own storage on your phone or browser. If you never sign in, nothing you enter leaves the device except the requests described below.</p>
+
+      <h2>What an account stores</h2>
+      <p>If you create an account, the same data (pins, trails, photos, landowner notes, settings, and the name you choose for camps) is copied to a private database and file store hosted by Supabase in the United States, so it can sync to your other devices. Each record is tied to your account and protected by row-level security: only you can read it, unless you share a pin or trail into a camp, in which case the members of that camp can read and edit it. Your email address is used to sign in and is shown, as its first part, to camp members who have not set a display name.</p>
+
+      <h2>Third-party services the app contacts</h2>
+      <ul>
+        <li><b>Open-Meteo</b> receives the latitude and longitude of your home ground to return weather. No account identifier is sent.</li>
+        <li><b>Esri, USGS and OpenStreetMap</b> serve map tiles for the area you look at.</li>
+        <li><b>Open-Meteo geocoding and BigDataCloud</b> turn a town name or coordinates into a place label.</li>
+        <li><b>Ohio OGRIP and county GIS services</b> (Summit, Stark, Geauga, or a layer you add) return public parcel records for the area on screen. Those are public county records; Rutline does not store them except in the landowner notes you choose to save.</li>
+        <li><b>Supabase</b> provides sign-in, database and photo storage when you use an account.</li>
+      </ul>
+      <p>Rutline has no advertising, no analytics and no trackers.</p>
+
+      <h2>Location and camera</h2>
+      <p>Location is used, with your permission, to show you on the map, drop pins where you stand, and set your home ground. The camera is used for the blood light and to add photos to pins. Camera frames from the blood light are processed on the device and are not sent anywhere unless you tap "Mark blood here", which saves that frame as a photo on a pin.</p>
+
+      <h2>Your choices</h2>
+      <ul>
+        <li>Export everything from Settings → Your data → Backup at any time.</li>
+        <li>Sign out and clear this device from Settings → Account.</li>
+        <li>Delete everything in your account, or delete the account itself, from Settings → Account → Danger zone. Deletion is immediate and permanent.</li>
+      </ul>
+
+      <h2>Children</h2>
+      <p>Rutline is not directed at children under 13 and does not knowingly collect their information.</p>
+
+      <h2>Contact</h2>
+      <p>Questions about this policy or your data: open an issue at <a href="https://github.com/jgyoerger1/rutline/issues">github.com/jgyoerger1/rutline/issues</a>.</p>
+    </main>
+  </body>
+</html>

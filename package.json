@@ -1,15 +1,24 @@
 {
   "name": "rutline",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:native": "node scripts/build-native.mjs",
+    "ios:sync": "npm run build:native && npx cap sync ios",
+    "ios:assets": "npx @capacitor/assets generate --ios --assetPath resources --iconBackgroundColor #0f1110 --iconBackgroundColorDark #0f1110 --splashBackgroundColor #0f1110 --splashBackgroundColorDark #0f1110"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/keyboard": "^8.0.6",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@fontsource/chakra-petch": "^5.3.0",
@@ -25,6 +34,9 @@
     "suncalc": "^2.1.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
     "@tailwindcss/vite": "^4.3.3",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^26.6.4",

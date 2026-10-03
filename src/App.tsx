@@ -15,6 +15,7 @@ import { parsePeakOverride } from './lib/rut'
 import { useSettings } from './lib/settings'
 import { refreshCamps } from './lib/camps'
 import { resolveSwitch, startSync, syncNow, useSyncStatus } from './lib/sync'
+import { initNative } from './lib/native'
 import { useForecast } from './lib/weather'
 
 const ForecastView = lazy(() => import('./components/weather/ForecastView'))
@@ -63,6 +64,17 @@ export default function App() {
 
   useEffect(() => {
     startSync()
+    // Native shell: status bar, splash, and invite links opened into the app
+    void initNative((url) => {
+      const m = /join\/([A-Za-z0-9]{6,12})/.exec(url)
+      if (!m) return
+      try {
+        localStorage.setItem(PENDING_JOIN, m[1].toUpperCase())
+      } catch {
+        /* ignore */
+      }
+      setView('more')
+    })
     const onHash = () => setViewState(readHash())
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)

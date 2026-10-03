@@ -5,3 +5,11 @@ dev-dist
 .DS_Store
 .env.local
 .env.*.local
+
+# Native build output
+dist-native
+build
+ios/App/App/public
+ios/App/App/capacitor.config.json
+fastlane/report.xml
+fastlane/README.md

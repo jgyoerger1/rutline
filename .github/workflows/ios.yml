@@ -1,0 +1,134 @@
+name: iOS app
+
+# Builds the native iOS app on GitHub's macOS runners so no Mac is needed.
+#  - "compile": runs on every push to main and proves the Xcode project builds (unsigned).
+#  - "testflight": run it by hand from the Actions tab with "Upload to TestFlight" ticked.
+#    Needs the Apple secrets listed in docs/app-store.md.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'ios/**'
+      - 'resources/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'index.html'
+      - 'scripts/**'
+      - 'fastlane/**'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: 'Upload to TestFlight'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+  VITE_AUTH_PROVIDERS: ${{ vars.VITE_AUTH_PROVIDERS }}
+
+jobs:
+  compile:
+    name: Compile (unsigned)
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build web bundle for the native shell
+        run: node scripts/build-native.mjs
+      - name: Sync Capacitor
+        run: npx cap sync ios
+      - name: Stamp version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          cd ios/App
+          xcrun agvtool new-marketing-version "$VERSION"
+          xcrun agvtool new-version -all "${{ github.run_number }}"
+      - name: Resolve Swift packages
+        run: xcodebuild -resolvePackageDependencies -project ios/App/App.xcodeproj -scheme App
+      - name: Build (no signing)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | xcbeautify --renderer github-actions || xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+      - name: Keep the unsigned .app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rutline-unsigned-app
+          path: build/DerivedData/Build/Products/Release-iphoneos/*.app
+          if-no-files-found: error
+          retention-days: 14
+
+  testflight:
+    name: Sign and upload to TestFlight
+    if: github.event_name == 'workflow_dispatch' && inputs.upload == true
+    needs: compile
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      IOS_PROFILE_NAME: ${{ secrets.IOS_PROFILE_NAME }}
+      APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+      APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+      APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build web bundle for the native shell
+        run: node scripts/build-native.mjs
+      - name: Sync Capacitor
+        run: npx cap sync ios
+      - name: Install signing certificate and provisioning profile
+        env:
+          CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          CERT_PATH=$RUNNER_TEMP/dist.p12
+          PROFILE_PATH=$RUNNER_TEMP/app.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          echo -n "$CERT_P12_BASE64" | base64 --decode -o "$CERT_PATH"
+          echo -n "$PROFILE_BASE64" | base64 --decode -o "$PROFILE_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< "$(security cms -D -i "$PROFILE_PATH")")
+          cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$UUID".mobileprovision
+          echo "Installed profile $UUID"
+      - name: Archive, export and upload
+        run: fastlane ios beta
+      - name: Keep the IPA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rutline-ipa
+          path: build/*.ipa
+          if-no-files-found: ignore
+          retention-days: 30

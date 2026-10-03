@@ -36,7 +36,7 @@ Push to `main`. The workflow in `.github/workflows/deploy.yml` builds with Vite 
 
 Safari limits: no vibration and no torch control from a web page, so the tracker relies on its tick sound and the on-screen badge. Camera access needs HTTPS, which GitHub Pages provides.
 
-### A real App Store build later
+### The App Store build
 
 The app is plain web code, so it can be wrapped with [Capacitor](https://capacitorjs.com) for a native iOS shell with haptics, torch and App Store distribution. That path needs a Mac with Xcode and an Apple Developer account:
 

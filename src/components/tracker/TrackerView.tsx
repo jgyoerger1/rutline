@@ -3,6 +3,7 @@ import { CameraSlash, DropHalf, Eye, Flashlight, Image, MapPin, Pause, Play, Sca
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { addPhotoBlob, addWaypoint } from '../../lib/db'
 import { locate } from '../../lib/geo'
+import { hapticHit } from '../../lib/native'
 import type { TrackerColor, TrackerMode } from '../../lib/types'
 import { useApp } from '../AppContext'
 import { Button, EmptyState, SectionLabel, Segmented } from '../ui'
@@ -137,11 +138,7 @@ export default function TrackerView() {
     const now = performance.now()
     if (now - lastAlert.current < 650) return
     lastAlert.current = now
-    try {
-      navigator.vibrate?.(35)
-    } catch {
-      /* unsupported */
-    }
+    void hapticHit()
     if (soundRef.current && audioRef.current) {
       const ctx = audioRef.current
       const o = ctx.createOscillator()
@@ -437,7 +434,7 @@ export default function TrackerView() {
           <div className="text-[12.5px] text-bone-600 leading-relaxed space-y-1.5">
             <p>Best within six feet of the ground. Fresh arterial blood is bright; liver and gut blood runs dark, so step up to High. Red leaves and berries will light up on Soil.</p>
             <p>Mark blood here drops a pin with the frame you are looking at, so the trail builds on the map as you go.</p>
-            <p>iPhone: Safari does not vibrate or switch the flash from a web page. The tick and the orange badge are your alerts.</p>
+            <p>In Safari on iPhone there is no vibration or flash control; the tick and the orange badge are your alerts. The App Store build adds haptics.</p>
           </div>
         </div>
       </div>
