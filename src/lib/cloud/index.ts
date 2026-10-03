@@ -4,7 +4,18 @@ import type { CloudBackend, OAuthProvider } from './types'
 
 export type { CloudBackend, CloudUser, OAuthProvider, SyncTable } from './types'
 
-const URL_ = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim()
+/** Accept the bare project URL or any of the dashboard's REST/Auth/Storage URLs and keep only the origin */
+function projectOrigin(raw: string | undefined): string | undefined {
+  const v = raw?.trim()
+  if (!v) return undefined
+  try {
+    return new URL(v.startsWith('http') ? v : 'https://' + v).origin
+  } catch {
+    return undefined
+  }
+}
+
+const URL_ = projectOrigin(import.meta.env.VITE_SUPABASE_URL as string | undefined)
 const KEY_ = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim()
 const PROVIDERS = ((import.meta.env.VITE_AUTH_PROVIDERS as string | undefined) ?? '')
   .split(',')
