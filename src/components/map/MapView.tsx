@@ -26,11 +26,12 @@ const LAYERS: Record<MapLayer, { url: string; attribution: string; maxNativeZoom
 
 type AddMode = { kind: 'point'; type: WaypointType } | { kind: 'trail'; trail: TrailKind; points: [number, number][] } | null
 
+// Deer trails carry the brand orange; your own routes are bone so they read as yours, not theirs
 const TRAIL_STYLE: Record<TrailKind, L.PathOptions> = {
-  trail: { color: '#d6d0c3', weight: 3, opacity: 0.9 },
-  entry: { color: '#e8702c', weight: 3, dashArray: '8 6', opacity: 0.95 },
-  exit: { color: '#e8702c', weight: 3, dashArray: '2 7', opacity: 0.95 },
-  drag: { color: '#f5a86b', weight: 4, opacity: 0.95 },
+  trail: { color: '#e8702c', weight: 3.5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' },
+  entry: { color: '#d6d0c3', weight: 3, dashArray: '10 7', opacity: 0.9, lineCap: 'round' },
+  exit: { color: '#d6d0c3', weight: 3, dashArray: '2 8', opacity: 0.9, lineCap: 'round' },
+  drag: { color: '#f5a86b', weight: 5, dashArray: '1 9', opacity: 1, lineCap: 'round' },
 }
 
 export default function MapView({ active }: { active: boolean }) {
