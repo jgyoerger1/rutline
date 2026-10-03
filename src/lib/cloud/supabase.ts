@@ -107,6 +107,17 @@ export class SupabaseBackend implements CloudBackend {
   }
 
   async deleteAccount(): Promise<void> {
+    if (!this.userId) throw new Error('Not signed in')
+    // Storage objects must go through the Storage API; the database function cannot remove them
+    const prefix = this.userId
+    for (let guard = 0; guard < 50; guard++) {
+      const { data, error } = await this.sb.storage.from('photos').list(prefix, { limit: 100 })
+      fail(error)
+      if (!data?.length) break
+      const { error: rmErr } = await this.sb.storage.from('photos').remove(data.map((o) => prefix + '/' + o.name))
+      fail(rmErr)
+      if (data.length < 100) break
+    }
     const { error } = await this.sb.rpc('delete_account')
     fail(error)
     await this.sb.auth.signOut()

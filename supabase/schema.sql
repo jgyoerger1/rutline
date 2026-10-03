@@ -114,11 +114,16 @@ create policy "photos delete own" on storage.objects for delete to authenticated
   using (bucket_id = 'photos' and (storage.foldername(name))[1] = auth.uid()::text);
 
 -- ---------- account deletion from inside the app (Apple requires it) ----------
+-- The app removes the user's photo files through the Storage API first; Supabase does not
+-- allow deleting storage objects from inside a function. Deleting the auth user cascades
+-- to profiles, waypoints, trails and photos rows.
 create or replace function public.delete_account()
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public as $
 begin
-  delete from storage.objects where bucket_id = 'photos' and (storage.foldername(name))[1] = auth.uid()::text;
+  if auth.uid() is null then
+    raise exception 'Not signed in';
+  end if;
   delete from auth.users where id = auth.uid();
-end $$;
+end $;
 revoke all on function public.delete_account() from public;
 grant execute on function public.delete_account() to authenticated;
