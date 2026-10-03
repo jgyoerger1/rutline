@@ -195,6 +195,8 @@ body {
   transform: scale(1.12);
 }
 .dw-pin.is-blood { color: var(--color-ember-300); }
+.dw-pin.is-shared { box-shadow: inset 0 1px 0 rgba(242, 237, 226, 0.08), 0 0 0 2px var(--color-brass-400), 0 8px 18px -8px rgba(6, 8, 7, 0.9); }
+.dw-pin.is-shared::after { border-color: var(--color-brass-400); }
 .dw-pin.is-new { animation: pin-drop 0.7s var(--ease-expo) both; }
 @keyframes pin-drop {
   0% { transform: translateY(-18px) scale(0.4); opacity: 0; }

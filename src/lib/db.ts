@@ -54,12 +54,30 @@ class RutlineDB extends Dexie {
             p.uploadedAt = null
           })
       })
+    // v3: camps. Every row knows its owner (null = me) and the camp it is shared with
+    this.version(3)
+      .stores({
+        waypoints: '++id, &uid, type, updatedAt, dirty, campId',
+        photos: '++id, &uid, waypointId, waypointUid, takenAt, dirty, campId',
+        trails: '++id, &uid, kind, updatedAt, dirty, campId',
+      })
+      .upgrade(async (tx) => {
+        for (const t of ['waypoints', 'trails', 'photos']) {
+          await tx
+            .table(t)
+            .toCollection()
+            .modify((r: { campId?: string | null; ownerId?: string | null }) => {
+              r.campId = r.campId ?? null
+              r.ownerId = r.ownerId ?? null
+            })
+        }
+      })
   }
 }
 
 export const db = new RutlineDB()
 
-const meta = () => ({ uid: crypto.randomUUID(), dirty: 1, deletedAt: null as number | null })
+const meta = () => ({ uid: crypto.randomUUID(), dirty: 1, deletedAt: null as number | null, campId: null as string | null, ownerId: null as string | null })
 
 /** Tell the sync engine something changed */
 function changed(): void {
@@ -103,6 +121,16 @@ export async function updateWaypoint(id: number, patch: Partial<Waypoint>): Prom
   changed()
 }
 
+/** Share a pin with a camp (or take it private). Its photos follow. */
+export async function setWaypointCamp(id: number, campId: string | null): Promise<void> {
+  const now = Date.now()
+  await db.transaction('rw', db.waypoints, db.photos, async () => {
+    await db.waypoints.update(id, { campId, updatedAt: now, dirty: 1 })
+    await db.photos.where('waypointId').equals(id).modify({ campId, dirty: 1 })
+  })
+  changed()
+}
+
 export async function deleteWaypoint(id: number): Promise<void> {
   const now = Date.now()
   await db.transaction('rw', db.waypoints, db.photos, async () => {
@@ -130,6 +158,7 @@ export async function addPhotos(waypointId: number, files: File[] | FileList, ca
     const thumb = await makeThumb(full.blob, 360)
     await db.photos.add({
       ...meta(),
+      campId: wp?.campId ?? null,
       waypointId,
       waypointUid: wp?.uid ?? null,
       blob: full.blob,
@@ -158,6 +187,7 @@ export async function addPhotoBlob(waypointId: number, blob: Blob, caption = '')
   const thumb = await makeThumb(full.blob, 360)
   const id = await db.photos.add({
     ...meta(),
+    campId: wp?.campId ?? null,
     waypointId,
     waypointUid: wp?.uid ?? null,
     blob: full.blob,

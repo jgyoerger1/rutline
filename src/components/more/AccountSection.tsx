@@ -4,9 +4,9 @@ import { useAuth } from '../../lib/auth'
 import { cloud, cloudConfigured } from '../../lib/cloud'
 import { relTime } from '../../lib/format'
 import { setSettings } from '../../lib/settings'
-import { deleteAccount, deleteEverything, signOut, syncNow, useSyncStatus } from '../../lib/sync'
+import { changePassword, deleteAccount, deleteEverything, signOut, syncNow, useSyncStatus } from '../../lib/sync'
 import { useApp } from '../AppContext'
-import { Button, Input, SectionLabel } from '../ui'
+import { Button, Field, Input, SectionLabel } from '../ui'
 
 export function syncLabel(s: ReturnType<typeof useSyncStatus>): { text: string; Icon: typeof CloudCheck; tone: string } {
   switch (s.state) {
@@ -29,6 +29,9 @@ export default function AccountSection() {
   const sync = useSyncStatus()
   const [busy, setBusy] = useState<string | null>(null)
   const [confirmText, setConfirmText] = useState('')
+  const [pw1, setPw1] = useState('')
+  const [pw2, setPw2] = useState('')
+  const [pwOpen, setPwOpen] = useState(false)
 
   if (!cloudConfigured || !cloud) {
     return (
@@ -100,6 +103,43 @@ export default function AccountSection() {
         >
           Sign out and clear this device
         </Button>
+      </div>
+
+      <div className="border-t border-bone-50/8 pt-4">
+        <div className="flex items-center justify-between">
+          <SectionLabel>Password</SectionLabel>
+          <button onClick={() => setPwOpen((v) => !v)} className="text-[12px] text-bone-400 hover:text-bone-50 underline underline-offset-4 decoration-bone-50/20">
+            {pwOpen ? 'Cancel' : 'Change password'}
+          </button>
+        </div>
+        {pwOpen && (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Field label="New password" helper="At least 8 characters.">
+              <Input type="password" value={pw1} onChange={(e) => setPw1(e.target.value)} autoComplete="new-password" />
+            </Field>
+            <Field label="Repeat it" error={pw2 && pw1 !== pw2 ? 'Those do not match.' : null}>
+              <Input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
+            </Field>
+            <div className="sm:col-span-2">
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={busy !== null || pw1.length < 8 || pw1 !== pw2}
+                onClick={() =>
+                  void run('pw', async () => {
+                    await changePassword(pw1)
+                    setPw1('')
+                    setPw2('')
+                    setPwOpen(false)
+                  }, 'Password changed')
+                }
+              >
+                Save new password
+              </Button>
+              <div className="mt-2 text-[12px] text-bone-600">Signed in with a code or Google? This sets a password you can use from now on.</div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="border-t border-bone-50/8 pt-4">

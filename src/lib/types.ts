@@ -59,6 +59,10 @@ export interface SyncMeta {
   dirty: number
   /** Tombstone: set when deleted, kept until the deletion has been pushed */
   deletedAt: number | null
+  /** Camp this row is shared with; null = private */
+  campId: string | null
+  /** Account that owns the row; null = me */
+  ownerId: string | null
 }
 
 export interface Waypoint extends SyncMeta {

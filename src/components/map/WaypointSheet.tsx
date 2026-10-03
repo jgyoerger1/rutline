@@ -1,6 +1,7 @@
 import { ArrowSquareOut, CopySimple, EnvelopeSimple, Trash } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
-import { deleteWaypoint, updateWaypoint } from '../../lib/db'
+import { campName, nameFor, useCamps } from '../../lib/camps'
+import { deleteWaypoint, setWaypointCamp, updateWaypoint } from '../../lib/db'
 import { fmtDateTime } from '../../lib/format'
 import { fmtCoord, fmtDistance, haversineM } from '../../lib/geo'
 import { WAYPOINT_ORDER, WAYPOINT_TYPES, type Waypoint, type WaypointType } from '../../lib/types'
@@ -13,6 +14,7 @@ import WindPicker from './WindPicker'
 
 export default function WaypointSheet({ waypoint, me, windDir, onClose, onLetter }: { waypoint: Waypoint | null; me: { lat: number; lon: number } | null; windDir?: number; onClose: () => void; onLetter?: (t: LetterTarget) => void }) {
   const { toast, settings } = useApp()
+  const camps = useCamps()
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
   // Winds are kept locally so rapid taps do not race the live query
@@ -79,6 +81,20 @@ export default function WaypointSheet({ waypoint, me, windDir, onClose, onLetter
               }}
             />
           </Field>
+
+          {(camps.camps.length > 0 || w.campId) && (
+            <Field label="Share with" helper={w.ownerId ? `Shared by ${nameFor(w.ownerId)} in ${campName(w.campId) ?? 'a camp'}. Camp members can edit it.` : w.campId ? 'Everyone in the camp sees this pin and its photos.' : 'Only you see this pin.'}>
+              <select value={w.campId ?? ''} onChange={(e) => void setWaypointCamp(w.id!, e.target.value || null)} className="w-full h-11 px-3.5 rounded-xl bg-pine-900 border border-bone-50/10 text-bone-50 outline-none focus:border-ember-500/60">
+                <option value="">Just me</option>
+                {camps.camps.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+                {w.campId && !camps.camps.some((c) => c.id === w.campId) && <option value={w.campId}>{campName(w.campId) ?? 'Camp'}</option>}
+              </select>
+            </Field>
+          )}
 
           <Field label="Type">
             <select value={w.type} onChange={(e) => void save({ type: e.target.value as WaypointType })} className="w-full h-11 px-3.5 rounded-xl bg-pine-900 border border-bone-50/10 text-bone-50 outline-none focus:border-ember-500/60">

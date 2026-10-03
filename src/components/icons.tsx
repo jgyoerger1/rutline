@@ -40,13 +40,13 @@ export function WxIcon({ icon, isDay = true, ...rest }: { icon: WxCode['icon']; 
 
 const markerCache = new Map<string, string>()
 
-export function markerHtml(type: WaypointType, selected: boolean, isNew = false): string {
-  const key = `${type}:${selected ? 1 : 0}:${isNew ? 1 : 0}`
+export function markerHtml(type: WaypointType, selected: boolean, isNew = false, shared = false): string {
+  const key = `${type}:${selected ? 1 : 0}:${isNew ? 1 : 0}:${shared ? 1 : 0}`
   const hit = markerCache.get(key)
   if (hit) return hit
   const I = TYPE_ICON[type]
   const html = renderToStaticMarkup(
-    <div className={`dw-pin${selected ? ' is-selected' : ''}${type === 'blood' ? ' is-blood' : ''}${isNew ? ' is-new' : ''}`}>
+    <div className={`dw-pin${selected ? ' is-selected' : ''}${type === 'blood' ? ' is-blood' : ''}${isNew ? ' is-new' : ''}${shared ? ' is-shared' : ''}`}>
       <I weight={selected ? 'fill' : 'duotone'} />
     </div>,
   )

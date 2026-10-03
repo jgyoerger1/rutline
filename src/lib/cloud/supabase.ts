@@ -1,17 +1,29 @@
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
-import type { AuthEvent, CloudBackend, CloudUser, OAuthProvider, PushRow, RemoteProfile, RemoteRow, SyncTable } from './types'
+import type { AuthEvent, Camp, CampMember, CampRole, CloudBackend, CloudUser, OAuthProvider, PushRow, RemoteProfile, RemoteRow, SyncTable } from './types'
 
 interface Row {
   uid: string
   user_id: string
+  camp_id: string | null
   type?: string | null
   lat?: number | null
   lon?: number | null
   waypoint_uid?: string | null
+  path?: string | null
+  thumb_path?: string | null
   data: Record<string, unknown>
   client_updated_at: number
   deleted_at: number | null
   synced_at: string
+}
+
+interface CampRow {
+  id: string
+  name: string
+  invite_code: string
+  role: string
+  member_count: number | string
+  created_by: string
 }
 
 function toUser(s: Session | null): CloudUser | null {
@@ -27,10 +39,13 @@ function friendly(msg: string): string {
   if (/email not confirmed/i.test(msg)) return 'Confirm your email first. Check your inbox for the link.'
   if (/rate limit|too many/i.test(msg)) return 'Too many attempts for now. Try again in a few minutes.'
   if (/already registered/i.test(msg)) return 'That email already has an account. Sign in instead.'
-  if (/password should be/i.test(msg)) return 'Use a password of at least 8 characters.'
+  if (/password should be|at least 6|at least 8/i.test(msg)) return 'Use a password of at least 8 characters.'
+  if (/same password|different from the old/i.test(msg)) return 'Pick a password different from your current one.'
   if (/token has expired|invalid|otp/i.test(msg)) return 'That code is wrong or has expired. Request a new one.'
   return msg
 }
+
+const toCamp = (c: CampRow): Camp => ({ id: c.id, name: c.name, inviteCode: c.invite_code, role: (c.role as CampRole) ?? 'member', memberCount: Number(c.member_count ?? 1), createdBy: c.created_by })
 
 export class SupabaseBackend implements CloudBackend {
   readonly kind = 'supabase' as const
@@ -47,6 +62,11 @@ export class SupabaseBackend implements CloudBackend {
 
   private redirectTo(): string {
     return `${location.origin}${location.pathname}`
+  }
+
+  private me(): string {
+    if (!this.userId) throw new Error('Not signed in')
+    return this.userId
   }
 
   async getUser(): Promise<CloudUser | null> {
@@ -107,9 +127,8 @@ export class SupabaseBackend implements CloudBackend {
   }
 
   async deleteAccount(): Promise<void> {
-    if (!this.userId) throw new Error('Not signed in')
+    const prefix = this.me()
     // Storage objects must go through the Storage API; the database function cannot remove them
-    const prefix = this.userId
     for (let guard = 0; guard < 50; guard++) {
       const { data, error } = await this.sb.storage.from('photos').list(prefix, { limit: 100 })
       fail(error)
@@ -121,7 +140,10 @@ export class SupabaseBackend implements CloudBackend {
     const { error } = await this.sb.rpc('delete_account')
     fail(error)
     await this.sb.auth.signOut()
+    this.userId = null
   }
+
+  // ---------- rows ----------
 
   async pull(table: SyncTable, sinceIso: string | null): Promise<RemoteRow[]> {
     let q = this.sb.from(table).select('*').order('synced_at', { ascending: true }).limit(2000)
@@ -130,7 +152,14 @@ export class SupabaseBackend implements CloudBackend {
     fail(error)
     return ((data ?? []) as Row[]).map((r) => ({
       uid: r.uid,
-      data: { ...r.data, ...(table === 'waypoints' ? { type: r.type, lat: r.lat, lon: r.lon } : {}), ...(table === 'trails' ? { kind: r.type } : {}), ...(table === 'photos' ? { waypointUid: r.waypoint_uid } : {}) },
+      userId: r.user_id,
+      campId: r.camp_id ?? null,
+      data: {
+        ...r.data,
+        ...(table === 'waypoints' ? { type: r.type, lat: r.lat, lon: r.lon } : {}),
+        ...(table === 'trails' ? { kind: r.type } : {}),
+        ...(table === 'photos' ? { waypointUid: r.waypoint_uid, path: r.path ?? r.data.path ?? null, thumbPath: r.thumb_path ?? r.data.thumbPath ?? null } : {}),
+      },
       clientUpdatedAt: Number(r.client_updated_at),
       deletedAt: r.deleted_at == null ? null : Number(r.deleted_at),
       syncedAt: r.synced_at,
@@ -138,31 +167,107 @@ export class SupabaseBackend implements CloudBackend {
   }
 
   async push(table: SyncTable, rows: PushRow[]): Promise<void> {
-    if (!this.userId) throw new Error('Not signed in')
+    this.me()
     const payload = rows.map((r) => {
-      const base: Record<string, unknown> = { uid: r.uid, user_id: this.userId, data: r.data, client_updated_at: r.clientUpdatedAt, deleted_at: r.deletedAt }
+      const base: Record<string, unknown> = { uid: r.uid, user_id: r.userId, camp_id: r.campId, data: r.data, client_updated_at: r.clientUpdatedAt, deleted_at: r.deletedAt }
       if (table === 'waypoints') Object.assign(base, { type: r.type ?? null, lat: r.lat ?? null, lon: r.lon ?? null })
       if (table === 'trails') Object.assign(base, { type: r.type ?? null })
-      if (table === 'photos') Object.assign(base, { waypoint_uid: r.waypointUid ?? null })
+      if (table === 'photos') Object.assign(base, { waypoint_uid: r.waypointUid ?? null, path: r.path ?? null, thumb_path: r.thumbPath ?? null })
       return base
     })
     const { error } = await this.sb.from(table).upsert(payload, { onConflict: 'uid' })
     fail(error)
   }
 
+  async visible(table: SyncTable, uids: string[]): Promise<string[]> {
+    if (!uids.length) return []
+    const out: string[] = []
+    for (let i = 0; i < uids.length; i += 200) {
+      const { data, error } = await this.sb.from(table).select('uid').in('uid', uids.slice(i, i + 200))
+      fail(error)
+      for (const r of (data ?? []) as Array<{ uid: string }>) out.push(r.uid)
+    }
+    return out
+  }
+
+  // ---------- profile ----------
+
   async getProfile(): Promise<RemoteProfile | null> {
     if (!this.userId) return null
-    const { data, error } = await this.sb.from('profiles').select('settings, settings_updated_at').eq('id', this.userId).maybeSingle()
+    const { data, error } = await this.sb.from('profiles').select('settings, settings_updated_at, display_name').eq('id', this.userId).maybeSingle()
     fail(error)
     if (!data) return null
-    return { settings: (data.settings as Record<string, unknown>) ?? {}, updatedAt: Number(data.settings_updated_at ?? 0) }
+    return { settings: (data.settings as Record<string, unknown>) ?? {}, updatedAt: Number(data.settings_updated_at ?? 0), displayName: (data.display_name as string | null) ?? null }
   }
 
   async putProfile(settings: Record<string, unknown>, updatedAt: number): Promise<void> {
-    if (!this.userId) throw new Error('Not signed in')
-    const { error } = await this.sb.from('profiles').upsert({ id: this.userId, settings, settings_updated_at: updatedAt }, { onConflict: 'id' })
+    const id = this.me()
+    const { error } = await this.sb.from('profiles').upsert({ id, settings, settings_updated_at: updatedAt }, { onConflict: 'id' })
     fail(error)
   }
+
+  async setDisplayName(name: string): Promise<void> {
+    const id = this.me()
+    const { error } = await this.sb.from('profiles').upsert({ id, display_name: name.trim() || null }, { onConflict: 'id' })
+    fail(error)
+  }
+
+  // ---------- camps ----------
+
+  async listCamps(): Promise<Camp[]> {
+    const { data, error } = await this.sb.rpc('my_camps')
+    fail(error)
+    return ((data ?? []) as CampRow[]).map(toCamp)
+  }
+
+  async createCamp(name: string): Promise<Camp> {
+    const { data, error } = await this.sb.rpc('create_camp', { p_name: name })
+    fail(error)
+    const c = data as CampRow
+    return toCamp({ ...c, role: 'owner', member_count: 1 })
+  }
+
+  async joinCamp(code: string): Promise<Camp> {
+    const { data, error } = await this.sb.rpc('join_camp', { p_code: code })
+    fail(error)
+    const c = data as CampRow
+    return toCamp({ ...c, role: c.created_by === this.userId ? 'owner' : 'member', member_count: 0 })
+  }
+
+  async leaveCamp(campId: string): Promise<void> {
+    const { error } = await this.sb.rpc('leave_camp', { p_camp: campId })
+    fail(error)
+  }
+
+  async renameCamp(campId: string, name: string): Promise<void> {
+    const { error } = await this.sb.rpc('rename_camp', { p_camp: campId, p_name: name })
+    fail(error)
+  }
+
+  async rotateInviteCode(campId: string): Promise<string> {
+    const { data, error } = await this.sb.rpc('rotate_invite_code', { p_camp: campId })
+    fail(error)
+    return String(data)
+  }
+
+  async removeMember(campId: string, userId: string): Promise<void> {
+    const { error } = await this.sb.rpc('remove_member', { p_camp: campId, p_user: userId })
+    fail(error)
+  }
+
+  async campRoster(campId: string): Promise<CampMember[]> {
+    const { data, error } = await this.sb.rpc('camp_roster', { p_camp: campId })
+    fail(error)
+    return ((data ?? []) as Array<{ user_id: string; display_name: string | null; email: string | null; role: string; joined_at: string }>).map((m) => ({
+      userId: m.user_id,
+      displayName: m.display_name,
+      email: m.email,
+      role: (m.role as CampRole) ?? 'member',
+      joinedAt: m.joined_at,
+    }))
+  }
+
+  // ---------- storage ----------
 
   async uploadPhoto(path: string, blob: Blob): Promise<void> {
     const { error } = await this.sb.storage.from('photos').upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg', cacheControl: '31536000' })

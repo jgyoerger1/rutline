@@ -10,6 +10,7 @@ import { TRAIL_KINDS, WAYPOINT_ORDER, WAYPOINT_TYPES, type MapLayer, type Trail,
 import { useWatchPosition } from '../../lib/useGeo'
 import { boundsOf, type Parcel } from '../../lib/parcels'
 import { nowIndex } from '../../lib/weather'
+import { campName, nameFor, useCamps } from '../../lib/camps'
 import { useApp } from '../AppContext'
 import { markerHtml, TYPE_ICON } from '../icons'
 import { Button, Chip, IconButton, Input, SectionLabel, Segmented, Sheet } from '../ui'
@@ -174,11 +175,12 @@ export default function MapView({ active }: { active: boolean }) {
 
         {visible.map((w) => {
           const isNew = Date.now() - w.createdAt < 4000
+          const shared = !!w.campId
           return (
           <Marker
-            key={`${w.id}-${w.type}-${w.id === selectedId ? 's' : ''}${isNew ? '-n' : ''}`}
+            key={`${w.id}-${w.type}-${w.id === selectedId ? 's' : ''}${isNew ? '-n' : ''}${shared ? '-c' : ''}`}
             position={[w.lat, w.lon]}
-            icon={L.divIcon({ className: '', html: markerHtml(w.type, w.id === selectedId, isNew), iconSize: [36, 36], iconAnchor: [18, 41] })}
+            icon={L.divIcon({ className: '', html: markerHtml(w.type, w.id === selectedId, isNew, shared), iconSize: [36, 36], iconAnchor: [18, 41] })}
             draggable={w.id === selectedId}
             eventHandlers={{
               click: () => {
@@ -467,7 +469,11 @@ function PinList({ open, onClose, waypoints, trails, me, onPick, onPickTrail }: 
                 <I size={18} weight="duotone" className="text-bone-400 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{w.name}</div>
-                  <div className="text-[11.5px] text-bone-600 truncate">{WAYPOINT_TYPES[w.type].label}{w.note ? ` · ${w.note}` : ''}</div>
+                  <div className="text-[11.5px] text-bone-600 truncate">
+                    {WAYPOINT_TYPES[w.type].label}
+                    {w.campId ? ` · ${campName(w.campId) ?? 'camp'}${w.ownerId ? `, ${nameFor(w.ownerId)}` : ''}` : ''}
+                    {w.note ? ` · ${w.note}` : ''}
+                  </div>
                 </div>
                 {d != null && <span className="font-mono text-[12px] text-bone-400 tnum shrink-0">{fmtDistance(d, settings.units)}</span>}
               </button>
@@ -499,6 +505,7 @@ function PinList({ open, onClose, waypoints, trails, me, onPick, onPickTrail }: 
 
 function TrailSheet({ trail, onClose }: { trail: Trail | null; onClose: () => void }) {
   const { toast, settings } = useApp()
+  const camps = useCamps()
   const [name, setName] = useState('')
   useEffect(() => {
     if (trail) setName(trail.name)
@@ -550,6 +557,20 @@ function TrailSheet({ trail, onClose }: { trail: Trail | null; onClose: () => vo
               <div className="mt-1 font-mono text-[13px] tnum">{trail.points.length}</div>
             </div>
           </div>
+          {camps.camps.length > 0 && (
+            <div>
+              <SectionLabel>Share with</SectionLabel>
+              <select value={trail.campId ?? ''} onChange={(e) => void updateTrail(trail.id!, { campId: e.target.value || null })} className="mt-1 w-full h-11 px-3.5 rounded-xl bg-pine-900 border border-bone-50/10 text-bone-50 outline-none focus:border-ember-500/60 text-sm">
+                <option value="">Just me</option>
+                {camps.camps.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {trail.ownerId && <div className="mt-1 text-[12px] text-bone-600">Shared by {nameFor(trail.ownerId)}</div>}
+            </div>
+          )}
         </div>
       )}
     </Sheet>

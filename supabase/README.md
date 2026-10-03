@@ -46,7 +46,11 @@ VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
-## 5. First sign-in on a device that already has pins
+## 5. After an app update
+
+When the app gains features that need new tables or policies (camps did), re-run `supabase/schema.sql` the same way as step 2. It only adds what is missing.
+
+## 6. First sign-in on a device that already has pins
 
 Everything already on the device is uploaded into the account the first time you sign in. If a device was last used by a different account, the app asks whether to add its pins to the new account or start clean.
 
@@ -57,6 +61,7 @@ Everything already on the device is uploaded into the account the first time you
 - Conflicts resolve last-write-wins by the device clock. Two people editing the same pin within seconds of each other is not a case this version handles beyond that.
 - Photos upload once (full size and thumbnail) to a private bucket under the user's own folder. Other devices download thumbnails immediately and full images when opened.
 - Settings sync as one document on the profile. "Use without an account" is a device choice and does not sync.
+- Camps: a pin or trail shared into a camp carries the camp id; row-level security lets every member read and edit it, and only the owner hard-delete it. Photos follow their pin. Leaving a camp or being removed takes your shared rows back to private, and other members' devices drop rows they can no longer see on their next sync.
 
 ## Costs and limits
 

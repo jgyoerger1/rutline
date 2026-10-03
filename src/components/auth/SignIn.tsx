@@ -18,7 +18,13 @@ export default function SignIn() {
   const [codeSent, setCodeSent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('rutline.pendingJoin') ? 'You have a camp invite. Sign in or create an account and you will join it automatically.' : null
+    } catch {
+      return null
+    }
+  })
   if (!cloud) return null
   const backend = cloud
 

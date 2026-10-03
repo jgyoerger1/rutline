@@ -12,7 +12,8 @@ import { cloud, cloudConfigured } from './lib/cloud'
 import { scoreForecast } from './lib/huntcast'
 import { parsePeakOverride } from './lib/rut'
 import { useSettings } from './lib/settings'
-import { resolveSwitch, startSync, useSyncStatus } from './lib/sync'
+import { refreshCamps } from './lib/camps'
+import { resolveSwitch, startSync, syncNow, useSyncStatus } from './lib/sync'
 import { useForecast } from './lib/weather'
 
 const ForecastView = lazy(() => import('./components/weather/ForecastView'))
@@ -28,7 +29,20 @@ const VIEWS: Array<{ id: View; label: string; Icon: typeof MapTrifold }> = [
   { id: 'more', label: 'More', Icon: SlidersHorizontal },
 ]
 
+const PENDING_JOIN = 'rutline.pendingJoin'
+
 function readHash(): View {
+  // Invite links look like #/join/ABCD2345: remember the code, then land on More
+  const join = /^#\/join\/([A-Za-z0-9]{6,12})/.exec(location.hash)
+  if (join) {
+    try {
+      localStorage.setItem(PENDING_JOIN, join[1].toUpperCase())
+    } catch {
+      /* ignore */
+    }
+    history.replaceState(null, '', `${location.pathname}#/more`)
+    return 'more'
+  }
   const h = location.hash.replace(/^#\/?/, '').split('/')[0] as View
   return VIEWS.some((v) => v.id === h) ? h : 'map'
 }
@@ -61,6 +75,32 @@ export default function App() {
     setToasts((t) => [...t, { id, message }])
     window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2800)
   }, [])
+
+  // Finish an invite once there is a signed-in user
+  useEffect(() => {
+    if (!auth.user || !cloud) return
+    let code: string | null = null
+    try {
+      code = localStorage.getItem(PENDING_JOIN)
+    } catch {
+      /* ignore */
+    }
+    if (!code) return
+    const backend = cloud
+    void (async () => {
+      try {
+        const c = await backend.joinCamp(code!)
+        localStorage.removeItem(PENDING_JOIN)
+        await refreshCamps()
+        await syncNow()
+        toast(`Joined ${c.name}`)
+        setView('more')
+      } catch (e) {
+        localStorage.removeItem(PENDING_JOIN)
+        toast(e instanceof Error ? e.message : 'Could not join that camp')
+      }
+    })()
+  }, [auth.user, toast, setView])
 
   const peak = useMemo(() => (home ? parsePeakOverride(settings.rutPeakOverride, home.lat, home.lon, new Date()) : null), [home, settings.rutPeakOverride])
 

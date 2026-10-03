@@ -7,6 +7,7 @@ import { downloadBlob } from '../../lib/useGeo'
 import { useApp } from '../AppContext'
 import HomePicker from '../HomePicker'
 import AccountSection from './AccountSection'
+import CampsSection from './CampsSection'
 import CustomSourceForm from './CustomSourceForm'
 import { COUNTY_SOURCES } from '../../lib/parcels'
 import { Button, Field, Input, SectionLabel, Segmented } from '../ui'
@@ -77,6 +78,10 @@ export default function MoreView() {
         <div className="divide-y divide-bone-50/8">
           <Section title="Account" body="Sign in once and your pins, photos, landowners and settings follow you to every device.">
             <AccountSection />
+          </Section>
+
+          <Section title="Camps" body="A shared map for your crew. Share any pin or trail into a camp from its sheet; everything else stays yours.">
+            <CampsSection />
           </Section>
 
           <Section title="Property lines" body="Boundaries and owner mailing addresses come from Ohio's statewide parcel service for all 88 counties. Owner names are added where the county publishes them.">
