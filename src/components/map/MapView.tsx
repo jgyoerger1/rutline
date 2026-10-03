@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowUp, Check, GpsFix, List, MapPin, Path, Plus, Polygon as ParcelsIcon, X } from '@phosphor-icons/react'
+import { ArrowUp, Check, CrosshairSimple, GpsFix, List, MapPin, Path, Plus, Polygon as ParcelsIcon, Trash, X } from '@phosphor-icons/react'
 import L from 'leaflet'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
@@ -13,7 +13,7 @@ import { nowIndex } from '../../lib/weather'
 import { campName, nameFor, useCamps } from '../../lib/camps'
 import { useApp } from '../AppContext'
 import { markerHtml, TYPE_ICON } from '../icons'
-import { Button, Chip, IconButton, Input, SectionLabel, Segmented, Sheet } from '../ui'
+import { Button, Chip, Field, IconButton, Input, SectionLabel, Segmented, Sheet, Textarea } from '../ui'
 import LetterSheet, { type LetterTarget } from './LetterSheet'
 import ParcelLayer, { type ParcelStatus } from './ParcelLayer'
 import ParcelSheet from './ParcelSheet'
@@ -168,8 +168,34 @@ export default function MapView({ active }: { active: boolean }) {
         />
 
         {(trails ?? []).map((t) => (
-          <Polyline key={t.id} positions={t.points} pathOptions={{ ...TRAIL_STYLE[t.kind], weight: selectedTrail === t.id ? (TRAIL_STYLE[t.kind].weight as number) + 2 : TRAIL_STYLE[t.kind].weight }} eventHandlers={{ click: () => { setSelectedTrail(t.id!); setSelectedId(null) } }} />
+          <Polyline
+            key={t.id}
+            positions={t.points}
+            pathOptions={{ ...TRAIL_STYLE[t.kind], weight: selectedTrail === t.id ? (TRAIL_STYLE[t.kind].weight as number) + 2 : TRAIL_STYLE[t.kind].weight }}
+            interactive={false}
+          />
         ))}
+        {/* A wide, invisible stroke on top of each line so a finger can hit it */}
+        {(trails ?? []).map((t) => (
+          <Polyline
+            key={`hit-${t.id}`}
+            positions={t.points}
+            pathOptions={{ color: '#000', weight: 24, opacity: 0.001, lineCap: 'round', lineJoin: 'round' }}
+            eventHandlers={{
+              click: (e) => {
+                if (addMode) return
+                L.DomEvent.stopPropagation(e)
+                setSelectedTrail(t.id!)
+                setSelectedId(null)
+                setSelectedParcel(null)
+              },
+            }}
+          />
+        ))}
+        {selectedTrail != null &&
+          (trails ?? [])
+            .find((t) => t.id === selectedTrail)
+            ?.points.map((pt, i) => <Circle key={`v-${i}`} center={pt} radius={1.5} pathOptions={{ color: '#f2ede2', weight: 2, fillColor: '#0f1110', fillOpacity: 1 }} interactive={false} />)}
 
         {cone && <Polygon positions={cone} pathOptions={{ color: '#f5a86b', weight: 1.5, opacity: 0.9, fillColor: '#e8702c', fillOpacity: 0.26, className: 'scent-cone' }} interactive={false} />}
 
@@ -422,7 +448,7 @@ export default function MapView({ active }: { active: boolean }) {
 
       <LetterSheet target={letter} onClose={() => setLetter(null)} />
 
-      <TrailSheet trail={trails?.find((t) => t.id === selectedTrail) ?? null} onClose={() => setSelectedTrail(null)} />
+      <TrailSheet trail={trails?.find((t) => t.id === selectedTrail) ?? null} onClose={() => setSelectedTrail(null)} onZoom={(t) => mapRef.current?.fitBounds(L.latLngBounds(t.points), { padding: [60, 60] })} />
     </div>
   )
 }
@@ -491,7 +517,10 @@ function PinList({ open, onClose, waypoints, trails, me, onPick, onPickTrail }: 
                   <Path size={18} weight="duotone" className="text-bone-400 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{t.name}</div>
-                    <div className="text-[11.5px] text-bone-600">{TRAIL_KINDS[t.kind].label} · {t.points.length} points</div>
+                    <div className="text-[11.5px] text-bone-600 truncate">
+                      {TRAIL_KINDS[t.kind].label} · {t.points.length} points
+                      {t.campId ? ` · ${campName(t.campId) ?? 'camp'}${t.ownerId ? `, ${nameFor(t.ownerId)}` : ''}` : ''}
+                    </div>
                   </div>
                 </button>
               </li>
@@ -503,12 +532,16 @@ function PinList({ open, onClose, waypoints, trails, me, onPick, onPickTrail }: 
   )
 }
 
-function TrailSheet({ trail, onClose }: { trail: Trail | null; onClose: () => void }) {
+function TrailSheet({ trail, onClose, onZoom }: { trail: Trail | null; onClose: () => void; onZoom: (t: Trail) => void }) {
   const { toast, settings } = useApp()
   const camps = useCamps()
   const [name, setName] = useState('')
+  const [note, setNote] = useState('')
   useEffect(() => {
-    if (trail) setName(trail.name)
+    if (trail) {
+      setName(trail.name)
+      setNote(trail.note)
+    }
   }, [trail?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const length = useMemo(() => {
     if (!trail) return 0
@@ -520,33 +553,59 @@ function TrailSheet({ trail, onClose }: { trail: Trail | null; onClose: () => vo
     <Sheet
       open={!!trail}
       onClose={onClose}
-      title={trail ? TRAIL_KINDS[trail.kind].label : ''}
+      scrollKey={trail?.id ?? null}
+      title={
+        trail ? (
+          <span className="inline-flex items-center gap-2">
+            <Path size={18} weight="duotone" className="text-ember-400" />
+            {TRAIL_KINDS[trail.kind].label}
+          </span>
+        ) : null
+      }
       footer={
         trail ? (
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={async () => {
-              if (!confirm(`Delete "${trail.name}"?`)) return
-              await deleteTrail(trail.id!)
-              toast('Line deleted')
-              onClose()
-            }}
-          >
-            Delete
-          </Button>
+          <div className="flex items-center justify-between gap-2">
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={async () => {
+                if (!confirm(`Delete "${trail.name}"?${trail.campId ? ' It disappears for the whole camp.' : ''}`)) return
+                await deleteTrail(trail.id!)
+                toast('Line deleted')
+                onClose()
+              }}
+            >
+              <Trash size={15} /> Delete
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => onZoom(trail)}>
+              <CrosshairSimple size={16} /> Zoom to line
+            </Button>
+          </div>
         ) : null
       }
     >
       {trail && (
-        <div className="space-y-5">
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => {
-              if (name.trim() && name !== trail.name) void updateTrail(trail.id!, { name: name.trim() })
-            }}
-          />
+        <div className="space-y-6">
+          <Field label="Name">
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={() => {
+                if (name.trim() && name !== trail.name) void updateTrail(trail.id!, { name: name.trim() })
+              }}
+            />
+          </Field>
+
+          <Field label="Kind">
+            <select value={trail.kind} onChange={(e) => void updateTrail(trail.id!, { kind: e.target.value as TrailKind })} className="w-full h-11 px-3.5 rounded-xl bg-pine-900 border border-bone-50/10 text-bone-50 outline-none focus:border-ember-500/60">
+              {(Object.keys(TRAIL_KINDS) as TrailKind[]).map((k) => (
+                <option key={k} value={k}>
+                  {TRAIL_KINDS[k].label}
+                </option>
+              ))}
+            </select>
+          </Field>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <SectionLabel>Length</SectionLabel>
@@ -557,20 +616,31 @@ function TrailSheet({ trail, onClose }: { trail: Trail | null; onClose: () => vo
               <div className="mt-1 font-mono text-[13px] tnum">{trail.points.length}</div>
             </div>
           </div>
-          {camps.camps.length > 0 && (
-            <div>
-              <SectionLabel>Share with</SectionLabel>
-              <select value={trail.campId ?? ''} onChange={(e) => void updateTrail(trail.id!, { campId: e.target.value || null })} className="mt-1 w-full h-11 px-3.5 rounded-xl bg-pine-900 border border-bone-50/10 text-bone-50 outline-none focus:border-ember-500/60 text-sm">
+
+          {(camps.camps.length > 0 || trail.campId) && (
+            <Field label="Share with" helper={trail.ownerId ? `Shared by ${nameFor(trail.ownerId)} in ${campName(trail.campId) ?? 'a camp'}. Camp members can edit it.` : trail.campId ? 'Everyone in the camp sees this line.' : 'Only you see this line.'}>
+              <select value={trail.campId ?? ''} onChange={(e) => void updateTrail(trail.id!, { campId: e.target.value || null })} className="w-full h-11 px-3.5 rounded-xl bg-pine-900 border border-bone-50/10 text-bone-50 outline-none focus:border-ember-500/60">
                 <option value="">Just me</option>
                 {camps.camps.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
                 ))}
+                {trail.campId && !camps.camps.some((c) => c.id === trail.campId) && <option value={trail.campId}>{campName(trail.campId) ?? 'Camp'}</option>}
               </select>
-              {trail.ownerId && <div className="mt-1 text-[12px] text-bone-600">Shared by {nameFor(trail.ownerId)}</div>}
-            </div>
+            </Field>
           )}
+
+          <Field label="Notes" helper="Where it comes from, where it goes, when they use it.">
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              onBlur={() => {
+                if (note !== trail.note) void updateTrail(trail.id!, { note })
+              }}
+              placeholder="Bedding on the ridge to the beans, evenings..."
+            />
+          </Field>
         </div>
       )}
     </Sheet>
