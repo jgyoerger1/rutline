@@ -201,7 +201,7 @@ export default function SignIn() {
                 type="button"
                 onClick={() => {
                   setSettings({ localOnly: true })
-                  toast('Running on this device only. Sign in any time from More.')
+                  toast('Running on this device only. Sign in any time from Settings.')
                 }}
                 className="text-[13px] text-bone-600 hover:text-bone-200 underline-offset-4 hover:underline"
               >

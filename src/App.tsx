@@ -29,7 +29,7 @@ const VIEWS: Array<{ id: View; label: string; Icon: NavIcon }> = [
   { id: 'forecast', label: 'Wind', Icon: Wind },
   { id: 'huntcast', label: 'Predict', Icon: HoofIcon },
   { id: 'tracker', label: 'Track', Icon: Scan },
-  { id: 'more', label: 'More', Icon: SlidersHorizontal },
+  { id: 'more', label: 'Settings', Icon: SlidersHorizontal },
 ]
 
 const PENDING_JOIN = 'rutline.pendingJoin'
