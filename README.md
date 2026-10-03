@@ -38,15 +38,7 @@ Safari limits: no vibration and no torch control from a web page, so the tracker
 
 ### The App Store build
 
-The app is plain web code, so it can be wrapped with [Capacitor](https://capacitorjs.com) for a native iOS shell with haptics, torch and App Store distribution. That path needs a Mac with Xcode and an Apple Developer account:
-
-```bash
-npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/haptics
-npx cap init Rutline com.yourname.rutline --web-dir dist
-npm run build && npx cap add ios && npx cap sync ios && npx cap open ios
-```
-
-Then set the camera and location usage strings in `Info.plist`, swap `navigator.vibrate` for `@capacitor/haptics`, and archive from Xcode.
+The native iOS app lives in `ios/` (Capacitor 8, Swift Package Manager, no CocoaPods). GitHub's macOS runners compile it on every push and can sign and upload to TestFlight on demand, so no Mac is needed. `npm run ios:sync` rebuilds the web bundle for the shell and copies it in; `npm run ios:assets` regenerates icons and splash from `resources/`. The Apple-side setup, the secrets the workflow needs and the release steps are in [docs/app-store.md](docs/app-store.md).
 
 ## Stack
 
