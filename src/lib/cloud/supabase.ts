@@ -42,6 +42,7 @@ function friendly(msg: string): string {
   if (/password should be|at least 6|at least 8/i.test(msg)) return 'Use a password of at least 8 characters.'
   if (/same password|different from the old/i.test(msg)) return 'Pick a password different from your current one.'
   if (/token has expired|invalid|otp/i.test(msg)) return 'That code is wrong or has expired. Request a new one.'
+  if (/does not exist|could not find the function|schema cache/i.test(msg)) return 'The database is behind the app. Re-run supabase/schema.sql in the Supabase SQL editor, then sync again.'
   return msg
 }
 
@@ -194,10 +195,15 @@ export class SupabaseBackend implements CloudBackend {
 
   async getProfile(): Promise<RemoteProfile | null> {
     if (!this.userId) return null
-    const { data, error } = await this.sb.from('profiles').select('settings, settings_updated_at, display_name').eq('id', this.userId).maybeSingle()
+    let { data, error } = await this.sb.from('profiles').select('settings, settings_updated_at, display_name').eq('id', this.userId).maybeSingle()
+    if (error && /display_name/i.test(error.message)) {
+      // Schema not yet updated for camps: settings still sync, the name waits
+      ;({ data, error } = await this.sb.from('profiles').select('settings, settings_updated_at').eq('id', this.userId).maybeSingle())
+    }
     fail(error)
     if (!data) return null
-    return { settings: (data.settings as Record<string, unknown>) ?? {}, updatedAt: Number(data.settings_updated_at ?? 0), displayName: (data.display_name as string | null) ?? null }
+    const d = data as { settings?: Record<string, unknown>; settings_updated_at?: number; display_name?: string | null }
+    return { settings: d.settings ?? {}, updatedAt: Number(d.settings_updated_at ?? 0), displayName: d.display_name ?? null }
   }
 
   async putProfile(settings: Record<string, unknown>, updatedAt: number): Promise<void> {
