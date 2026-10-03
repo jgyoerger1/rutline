@@ -43,9 +43,10 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
 
         {/* Desktop: the field hero with a fade into the copy column */}
         <div className="relative hidden md:block overflow-hidden">
-          <motion.img src="brand/hero.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-[70%_50%]" initial={{ scale: 1.08, x: 10 }} animate={{ scale: 1, x: 0 }} transition={{ duration: 7, ease: [0.16, 1, 0.3, 1] }} />
-          <div className="absolute inset-0 bg-gradient-to-r from-pine-950 via-pine-950/35 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-pine-950/80 via-transparent to-transparent" />
+          <motion.img src="brand/hero-buck.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-[64%_45%]" initial={{ scale: 1.06 }} animate={{ scale: 1 }} transition={{ duration: 8, ease: [0.16, 1, 0.3, 1] }} />
+          <div className="absolute inset-0 bg-gradient-to-r from-pine-950 via-pine-950/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-pine-950/85 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-[radial-gradient(70%_55%_at_100%_100%,rgba(15,17,16,0.95),transparent_65%)]" />
         </div>
       </div>
     </motion.div>
