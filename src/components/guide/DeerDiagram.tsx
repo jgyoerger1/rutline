@@ -1,27 +1,18 @@
 /**
- * The field-dressing diagram: a whitetail on its back, head to the left,
- * seen from below. One SVG, a camera that eases between framings, and one
- * ember overlay per step whose cut line draws with scroll progress.
- *
- * Camera = viewBox written straight to the DOM from three springs, so the
- * vector art stays crisp at every zoom. Stroke widths and label sizes are
- * re-derived from the camera so they hold a constant size on screen.
+ * Field dressing: a whitetail on its back, head to the left, seen from below.
+ * One ember overlay per step whose cut line draws with scroll progress.
  */
-import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useSpring, useTransform, type MotionValue } from 'framer-motion'
-import { memo, useEffect, useId, useLayoutEffect, useRef } from 'react'
+import { motion, useReducedMotion, useTransform, type MotionValue } from 'framer-motion'
+import { memo, useRef } from 'react'
+import { ArrowHead, BONE, BONE_400, BONE_600, BRASS, Cut, EASE_OUT, EMBER, EMBER_300, GlowDefs, HIDE, HIDE_EDGE, Label, Phase, flipY, quad, tube, useCamera, type Camera } from './diagram'
+import type { DiagramProps } from './types'
 import type { IllustrationKey } from './fieldDressing'
 
-export type Scene = IllustrationKey | 'intro' | 'outro'
-
-interface Camera {
-  cx: number
-  cy: number
-  w: number
-}
+type Scene = IllustrationKey | 'intro' | 'outro'
 
 const FULL: Camera = { cx: 430, cy: 300, w: 860 }
 
-export const CAMERAS: Record<Scene, Camera> = {
+const CAMERAS: Record<Scene, Camera> = {
   intro: FULL,
   position: FULL,
   anus: { cx: 715, cy: 300, w: 400 },
@@ -35,64 +26,13 @@ export const CAMERAS: Record<Scene, Camera> = {
   outro: FULL,
 }
 
-const BONE = '#f2ede2'
-const BONE_400 = '#a9ad9f'
-const BONE_600 = '#767d74'
-const EMBER = '#e8702c'
-const EMBER_300 = '#f5a86b'
-const BRASS = '#c4ab74'
-const HIDE = '#1d221f'
-const HIDE_EDGE = '#d6d0c3'
-
-const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1]
-
 // ---------- geometry ----------
 
-/** Sample a quadratic curve and offset it into a closed, tapering tube. */
-function tube(p0: [number, number], c: [number, number], p1: [number, number], w0: number, w1: number, n = 14): { body: string; hoof: string } {
-  const pts: Array<[number, number]> = []
-  const nrm: Array<[number, number]> = []
-  for (let i = 0; i <= n; i++) {
-    const t = i / n
-    const mt = 1 - t
-    const x = mt * mt * p0[0] + 2 * mt * t * c[0] + t * t * p1[0]
-    const y = mt * mt * p0[1] + 2 * mt * t * c[1] + t * t * p1[1]
-    const dx = 2 * mt * (c[0] - p0[0]) + 2 * t * (p1[0] - c[0])
-    const dy = 2 * mt * (c[1] - p0[1]) + 2 * t * (p1[1] - c[1])
-    const len = Math.hypot(dx, dy) || 1
-    pts.push([x, y])
-    nrm.push([-dy / len, dx / len])
-  }
-  const left: string[] = []
-  const right: string[] = []
-  for (let i = 0; i <= n; i++) {
-    const hw = (w0 + (w1 - w0) * (i / n)) / 2
-    const [x, y] = pts[i]
-    const [nx, ny] = nrm[i]
-    left.push(`${(x + nx * hw).toFixed(1)} ${(y + ny * hw).toFixed(1)}`)
-    right.push(`${(x - nx * hw).toFixed(1)} ${(y - ny * hw).toFixed(1)}`)
-  }
-  const body = `M${left.join(' L')} L${right.reverse().join(' L')} Z`
-  // Hoof: the last 9% of the tube
-  const k = Math.max(1, Math.round(n * 0.09))
-  const hl: string[] = []
-  const hr: string[] = []
-  for (let i = n - k; i <= n; i++) {
-    const hw = (w0 + (w1 - w0) * (i / n)) / 2 + 1.5
-    const [x, y] = pts[i]
-    const [nx, ny] = nrm[i]
-    hl.push(`${(x + nx * hw).toFixed(1)} ${(y + ny * hw).toFixed(1)}`)
-    hr.push(`${(x - nx * hw).toFixed(1)} ${(y - ny * hw).toFixed(1)}`)
-  }
-  const hoof = `M${hl.join(' L')} L${hr.reverse().join(' L')} Z`
-  return { body, hoof }
-}
-
 const LEGS = [
-  tube([352, 232], [292, 122], [346, 42], 36, 17),
-  tube([352, 368], [292, 478], [346, 558], 36, 17),
-  tube([648, 230], [716, 118], [668, 42], 38, 17),
-  tube([648, 370], [716, 482], [668, 558], 38, 17),
+  tube(quad([352, 232], [292, 122], [346, 42]), 36, 17),
+  tube(quad([352, 368], [292, 478], [346, 558]), 36, 17),
+  tube(quad([648, 230], [716, 118], [668, 42]), 38, 17),
+  tube(quad([648, 370], [716, 482], [668, 558]), 38, 17),
 ]
 
 const BODY = 'M300 214 C 332 190, 418 192, 470 206 C 522 219, 600 212, 660 214 C 712 216, 742 252, 742 300 C 742 348, 712 384, 660 386 C 600 388, 522 381, 470 394 C 418 408, 332 410, 300 386 C 284 372, 278 332, 280 300 C 278 268, 284 228, 300 214 Z'
@@ -101,14 +41,14 @@ const HEAD = 'M184 262 C 148 248, 96 266, 72 300 C 96 334, 148 352, 184 338 Z'
 const EAR_T = 'M172 262 C 164 236, 182 212, 200 220 C 206 240, 194 258, 182 268 Z'
 const EAR_B = 'M172 338 C 164 364, 182 388, 200 380 C 206 360, 194 342, 182 332 Z'
 const ANTLER_T = ['M196 250 C 202 214, 186 182, 214 150 C 238 124, 276 128, 292 148', 'M206 206 C 216 190, 236 184, 252 190', 'M223 170 C 240 160, 256 162, 270 174', 'M199 236 C 212 226, 226 228, 234 238']
-const ANTLER_B = ANTLER_T.map((d) => d.replace(/(\d+(?:\.\d+)?) (\d+(?:\.\d+)?)/g, (_m, x, y) => `${x} ${(600 - Number(y)).toFixed(0)}`))
+const ANTLER_B = ANTLER_T.map(flipY)
 const TAIL = 'M740 288 C 762 282, 778 292, 782 300 C 778 308, 762 318, 740 312 Z'
 
 const RIBS_T = [0, 1, 2, 3, 4, 5, 6].map((i) => {
   const x = 318 + i * 23
   return `M${x} 300 C ${x - 8} 272, ${x - 2} 236, ${x + 20} 214`
 })
-const RIBS_B = RIBS_T.map((d) => d.replace(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g, (_m, x, y) => `${x} ${(600 - Number(y)).toFixed(0)}`))
+const RIBS_B = RIBS_T.map(flipY)
 const STERNUM = 'M302 300 L 472 300'
 const DIAPHRAGM = 'M480 216 C 446 258, 446 342, 480 384'
 const PAUNCH = 'M504 240 C 560 220, 640 232, 668 270 C 688 300, 680 350, 640 372 C 592 392, 522 382, 502 350 C 486 320, 486 270, 504 240 Z'
@@ -119,84 +59,34 @@ const LIVER = 'M486 298 C 512 294, 538 310, 534 338 C 530 362, 500 374, 482 358 
 const WINDPIPE = ['M296 292 L 100 292', 'M296 308 L 100 308']
 const GULLET = 'M296 318 C 240 322, 170 320, 104 318'
 const TRACHEA_RINGS = Array.from({ length: 15 }, (_, i) => 112 + i * 12.5)
-
-// Step 7: everything that comes out, as one mass
 const MASS = 'M322 262 C 360 236, 430 226, 476 240 C 520 226, 610 228, 664 268 C 686 300, 680 348, 640 370 C 590 392, 520 384, 476 362 C 430 376, 360 364, 322 338 C 306 320, 306 280, 322 262 Z'
 
 // ---------- component ----------
 
-export default function DeerDiagram({ scene, draw, className = '' }: { scene: Scene; draw: MotionValue<number>; className?: string }) {
-  const reduced = useReducedMotion()
+export default function DeerDiagram({ scene: sceneIn, draw, className = '' }: DiagramProps) {
+  const scene = (sceneIn in CAMERAS ? sceneIn : 'intro') as Scene
+  const reduced = !!useReducedMotion()
   const svgRef = useRef<SVGSVGElement>(null)
   const bodyRef = useRef<SVGGElement>(null)
   const anatomyRef = useRef<SVGGElement>(null)
   const overlayRef = useRef<SVGGElement>(null)
   const labelsRef = useRef<SVGGElement>(null)
 
-  // Camera: slow, soft springs. Explanatory motion gets the long leash.
-  const spring = { stiffness: 58, damping: 19, mass: 1 }
-  const cx = useSpring(FULL.cx, spring)
-  const cy = useSpring(FULL.cy, spring)
-  const w = useSpring(FULL.w, spring)
-  const viewBox = useTransform([cx, cy, w], ([x, y, ww]) => {
-    const h = (ww as number) * 0.6
-    return `${(x as number) - (ww as number) / 2} ${(y as number) - h / 2} ${ww} ${h}`
-  })
-
-  const apply = (vb: string) => {
-    const svg = svgRef.current
-    if (!svg) return
-    svg.setAttribute('viewBox', vb)
-    const ww = w.get()
-    const h = ww * 0.6
-    const unit = Math.min(svg.clientWidth / ww, svg.clientHeight / h) || 1
-    // Constant screen-pixel strokes and labels regardless of zoom
-    bodyRef.current?.setAttribute('stroke-width', (1.5 / unit).toFixed(3))
-    anatomyRef.current?.setAttribute('stroke-width', (1.1 / unit).toFixed(3))
-    overlayRef.current?.setAttribute('stroke-width', (2.4 / unit).toFixed(3))
-    if (labelsRef.current) {
-      labelsRef.current.setAttribute('font-size', (11.5 / unit).toFixed(2))
-      labelsRef.current.setAttribute('stroke-width', (1 / unit).toFixed(3))
-    }
-  }
-  useMotionValueEvent(viewBox, 'change', apply)
-  useLayoutEffect(() => {
-    apply(viewBox.get())
-    const svg = svgRef.current
-    if (!svg) return
-    const ro = new ResizeObserver(() => apply(viewBox.get()))
-    ro.observe(svg)
-    return () => ro.disconnect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    const cam = CAMERAS[scene]
-    if (reduced) {
-      cx.jump(cam.cx)
-      cy.jump(cam.cy)
-      w.jump(cam.w)
-    } else {
-      cx.set(cam.cx)
-      cy.set(cam.cy)
-      w.set(cam.w)
-    }
-  }, [scene, reduced, cx, cy, w])
+  useCamera(svgRef, CAMERAS[scene], reduced, [
+    { ref: bodyRef, stroke: 1.5 },
+    { ref: anatomyRef, stroke: 1.1 },
+    { ref: overlayRef, stroke: 2.4 },
+    { ref: labelsRef, stroke: 1, font: 11.5 },
+  ])
 
   const tilt = scene === 'pull'
-  const spread = scene === 'chest' || scene === 'windpipe' || scene === 'diaphragm' || scene === 'pull' || scene === 'organs' || scene === 'cool' || scene === 'outro'
+  const spread = ['chest', 'windpipe', 'diaphragm', 'pull', 'organs', 'cool', 'outro'].includes(scene)
   const opened = scene !== 'intro' && scene !== 'position' && scene !== 'anus'
 
   return (
-    <svg ref={svgRef} className={className} viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet" aria-hidden data-tilt={tilt ? 1 : 0} data-spread={spread ? 1 : 0} data-open={opened ? 1 : 0}>
+    <svg ref={svgRef} className={className} viewBox="0 0 860 516" preserveAspectRatio="xMidYMid meet" aria-hidden data-tilt={tilt ? 1 : 0} data-spread={spread ? 1 : 0} data-open={opened ? 1 : 0}>
       <defs>
-        <filter id="fg-glow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="5" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
+        <GlowDefs />
         <radialGradient id="fg-hide" cx="42%" cy="50%" r="70%">
           <stop offset="0%" stopColor="#262c28" />
           <stop offset="100%" stopColor={HIDE} />
@@ -204,12 +94,10 @@ export default function DeerDiagram({ scene, draw, className = '' }: { scene: Sc
       </defs>
 
       <g className="fg-scene">
-        {/* ---- the animal ---- */}
         <g ref={bodyRef} stroke={HIDE_EDGE} strokeOpacity="0.85" strokeLinejoin="round" strokeLinecap="round" fill="url(#fg-hide)">
-          <Figure reduced={!!reduced} />
+          <Figure reduced={reduced} />
         </g>
 
-        {/* ---- faint anatomy, revealed as the cavity opens ---- */}
         <g ref={anatomyRef} className="fg-anatomy" fill="none" stroke={BONE} strokeLinecap="round" strokeLinejoin="round">
           <path d={STERNUM} strokeOpacity="0.32" />
           <g className="fg-ribs fg-ribs-top" strokeOpacity="0.2">
@@ -239,26 +127,19 @@ export default function DeerDiagram({ scene, draw, className = '' }: { scene: Sc
             ))}
           </g>
           <path d={GULLET} strokeOpacity="0.16" />
-          {/* vent */}
           <circle cx="722" cy="300" r="5" strokeOpacity="0.35" />
         </g>
 
-        {/* ---- the step overlays ---- */}
         <g ref={overlayRef} fill="none" stroke={EMBER} strokeLinecap="round" strokeLinejoin="round">
-          <AnimatePresence initial={false}>
-            <motion.g key={scene} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduced ? 0.2 : 0.45, ease: EASE_OUT }}>
-              <Overlay scene={scene} draw={draw} />
-            </motion.g>
-          </AnimatePresence>
+          <Phase id={scene} reduced={reduced}>
+            <Overlay scene={scene} draw={draw} />
+          </Phase>
         </g>
 
-        {/* ---- labels: mono, small, sized to the camera ---- */}
         <g ref={labelsRef} fill={BONE_400} stroke="none" fontFamily="var(--font-mono)" letterSpacing="0.08em" style={{ textTransform: 'uppercase' }}>
-          <AnimatePresence initial={false}>
-            <motion.g key={scene} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduced ? 0.2 : 0.4, ease: EASE_OUT, delay: reduced ? 0 : 0.35 }}>
-              <Labels scene={scene} />
-            </motion.g>
-          </AnimatePresence>
+          <Phase id={scene} reduced={reduced} delay={0.35}>
+            <Labels scene={scene} />
+          </Phase>
         </g>
       </g>
     </svg>
@@ -274,7 +155,7 @@ const Figure = memo(function Figure({ reduced }: { reduced: boolean }) {
       {LEGS.map((l, i) => (
         <g key={i}>
           <motion.path d={l.body} {...line(0.25 + i * 0.08)} />
-          <motion.path d={l.hoof} fill="#3a403b" stroke="none" {...line(0.9 + i * 0.08)} />
+          <motion.path d={l.cap} fill="#3a403b" stroke="none" {...line(0.9 + i * 0.08)} />
         </g>
       ))}
       <motion.path d={TAIL} {...line(0.6)} />
@@ -295,25 +176,6 @@ const Figure = memo(function Figure({ reduced }: { reduced: boolean }) {
   )
 })
 
-/** A path that draws with scroll progress. Dashed variant reveals a static dashed line through a drawing mask. */
-function Cut({ d, dash, glow = true, color = EMBER, p }: { d: string; dash?: boolean; glow?: boolean; color?: string; p: MotionValue<number> }) {
-  const id = useId().replace(/:/g, '')
-  if (!dash) return <motion.path d={d} stroke={color} style={{ pathLength: p }} filter={glow ? 'url(#fg-glow)' : undefined} />
-  return (
-    <g>
-      <mask id={`cut-${id}`} maskUnits="userSpaceOnUse" x="-200" y="-200" width="1400" height="1000">
-        <motion.path d={d} stroke="#fff" strokeWidth="24" style={{ pathLength: p }} />
-      </mask>
-      <path d={d} stroke={color} strokeDasharray="7 7" mask={`url(#cut-${id})`} filter={glow ? 'url(#fg-glow)' : undefined} />
-    </g>
-  )
-}
-
-function ArrowHead({ x, y, dir = 1, p, size = 12 }: { x: number; y: number; dir?: 1 | -1; p: MotionValue<number>; size?: number }) {
-  const o = useTransform(p, [0.86, 1], [0, 1])
-  return <motion.path d={`M${x - dir * size} ${y - size * 0.55} L ${x} ${y} L ${x - dir * size} ${y + size * 0.55}`} style={{ opacity: o }} />
-}
-
 function Overlay({ scene, draw }: { scene: Scene; draw: MotionValue<number> }) {
   const knifeX = useTransform(draw, [0, 1], [470, 690])
   const massX = useTransform(draw, [0, 1], [0, 250])
@@ -326,13 +188,11 @@ function Overlay({ scene, draw }: { scene: Scene; draw: MotionValue<number> }) {
     case 'position':
       return (
         <>
-          {/* tag on the top antler */}
           <Cut d="M268 172 C 262 150, 246 142, 234 124" dash p={draw} glow={false} color={BRASS} />
           <motion.g style={{ opacity: late }} stroke={BRASS} transform="rotate(-22 222 108)">
             <rect x="196" y="94" width="52" height="30" rx="5" />
             <circle cx="238" cy="109" r="3.5" />
           </motion.g>
-          {/* head uphill */}
           <Cut d="M160 440 L 50 440" p={draw} />
           <ArrowHead x={48} y={440} dir={-1} p={draw} />
         </>
@@ -439,26 +299,15 @@ function Knife({ x, y }: { x: MotionValue<number>; y: number }) {
   )
 }
 
-function Label({ x, y, lead, anchor = 'start', children }: { x: number; y: number; lead?: [number, number]; anchor?: 'start' | 'end' | 'middle'; children: string }) {
-  return (
-    <g>
-      {lead && <path d={`M${x} ${y + 4} L ${lead[0]} ${lead[1]}`} stroke={BONE_600} strokeDasharray="2 3" fill="none" />}
-      <text x={x} y={y} textAnchor={anchor}>
-        {children}
-      </text>
-    </g>
-  )
-}
-
 function Labels({ scene }: { scene: Scene }) {
   switch (scene) {
     case 'position':
       return (
         <>
-          <Label x={262} y={100} anchor="start">
+          <Label x={262} y={100}>
             Tag first
           </Label>
-          <Label x={58} y={472} anchor="start">
+          <Label x={58} y={472}>
             Head uphill
           </Label>
         </>
@@ -466,10 +315,10 @@ function Labels({ scene }: { scene: Scene }) {
     case 'anus':
       return (
         <>
-          <Label x={540} y={212} anchor="start" lead={[700, 270]}>
+          <Label x={540} y={212} lead={[700, 270]}>
             Circle · 4–6 in deep
           </Label>
-          <Label x={762} y={398} anchor="start" lead={[736, 314]}>
+          <Label x={762} y={398} lead={[736, 314]}>
             Tie it off
           </Label>
         </>
@@ -477,10 +326,10 @@ function Labels({ scene }: { scene: Scene }) {
     case 'belly':
       return (
         <>
-          <Label x={360} y={172} anchor="start" lead={[472, 292]}>
+          <Label x={360} y={172} lead={[472, 292]}>
             Nick at the breastbone
           </Label>
-          <Label x={560} y={452} anchor="start" lead={[600, 320]}>
+          <Label x={560} y={452} lead={[600, 320]}>
             Edge up · fingers in a V
           </Label>
         </>
@@ -488,10 +337,10 @@ function Labels({ scene }: { scene: Scene }) {
     case 'chest':
       return (
         <>
-          <Label x={236} y={182} anchor="start" lead={[380, 292]}>
+          <Label x={236} y={182} lead={[380, 292]}>
             Split the breastbone
           </Label>
-          <Label x={400} y={424} anchor="start" lead={[376, 372]}>
+          <Label x={400} y={424} lead={[376, 372]}>
             Spread the ribs
           </Label>
         </>
@@ -499,7 +348,7 @@ function Labels({ scene }: { scene: Scene }) {
     case 'windpipe':
       return (
         <>
-          <Label x={36} y={198} anchor="start" lead={[156, 282]}>
+          <Label x={36} y={198} lead={[156, 282]}>
             Cut as high as you can reach
           </Label>
           <Label x={330} y={402} anchor="end" lead={[240, 314]}>
@@ -510,27 +359,27 @@ function Labels({ scene }: { scene: Scene }) {
     case 'diaphragm':
       return (
         <>
-          <Label x={326} y={184} anchor="start" lead={[466, 236]}>
+          <Label x={326} y={184} lead={[466, 236]}>
             Follow the ribs
           </Label>
-          <Label x={380} y={432} anchor="start" lead={[462, 378]}>
+          <Label x={380} y={432} lead={[462, 378]}>
             Both sides
           </Label>
         </>
       )
     case 'pull':
       return (
-        <Label x={520} y={140} anchor="start" lead={[640, 296]}>
+        <Label x={520} y={140} lead={[640, 296]}>
           Steady pull toward the tail
         </Label>
       )
     case 'organs':
       return (
         <>
-          <Label x={328} y={232} anchor="start" lead={[396, 278]}>
+          <Label x={328} y={232} lead={[396, 278]}>
             Heart
           </Label>
-          <Label x={560} y={394} anchor="start" lead={[528, 352]}>
+          <Label x={560} y={394} lead={[528, 352]}>
             Liver
           </Label>
         </>
@@ -539,7 +388,7 @@ function Labels({ scene }: { scene: Scene }) {
     case 'outro':
       return (
         <>
-          <Label x={470} y={150} anchor="start" lead={[436, 212]}>
+          <Label x={470} y={150} lead={[436, 212]}>
             Prop it open
           </Label>
           <Label x={740} y={454} anchor="end" lead={[640, 352]}>
@@ -560,7 +409,7 @@ export function DeerFigure({ className = '' }: { className?: string }) {
         {LEGS.map((l, i) => (
           <g key={i}>
             <path d={l.body} />
-            <path d={l.hoof} fill="#3a403b" stroke="none" />
+            <path d={l.cap} fill="#3a403b" stroke="none" />
           </g>
         ))}
         <path d={TAIL} />

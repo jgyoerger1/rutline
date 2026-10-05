@@ -5,31 +5,16 @@
  */
 export type IllustrationKey = 'position' | 'anus' | 'belly' | 'chest' | 'windpipe' | 'diaphragm' | 'pull' | 'organs' | 'cool'
 
-export interface GuideStep {
-  id: string
-  number: number
-  title: string
-  kicker: string
-  body: string[]
-  tips?: string[]
-  caution?: string
-  illustration: IllustrationKey
-}
-
-export interface GuideMeta {
-  slug: string
-  title: string
-  subtitle: string
-  minutes: number
-  gear: string[]
-}
+import type { GuideMeta, GuideStep } from './types'
 
 export const FIELD_DRESSING: GuideMeta = {
   slug: 'field-dressing',
+  installment: 1,
   title: 'Field dressing a deer',
   subtitle: 'From the first cut to a cooling carcass in nine steps. Clean, quick, and no punctured gut.',
   minutes: 20,
   gear: ['A sharp knife, 3 to 4 inch blade, drop point or gut hook', 'Nitrile gloves, shoulder length if you have them', 'A zip tie or 2 feet of string', 'Game bags or a clean tarp', 'Paper towels or a rag', 'Your tag, and the pen to fill it out'],
+  footnote: "Written for Rutline from the hunter-education standard sequence. Regulations on tagging and evidence of sex vary by state; your agency's rules win.",
 }
 
 export const FIELD_DRESSING_STEPS: GuideStep[] = [
