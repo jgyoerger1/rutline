@@ -348,26 +348,14 @@ function Labels({ scene }: { scene: Scene }) {
           <Label x={380} y={226} anchor="middle">
             Lungs
           </Label>
-          <Label x={380} y={244} anchor="middle" dim>
-            Pink, frothy
-          </Label>
           <Label x={445} y={226} anchor="middle">
             Heart
-          </Label>
-          <Label x={445} y={244} anchor="middle" dim>
-            Bright, lots
           </Label>
           <Label x={510} y={226} anchor="middle">
             Liver
           </Label>
-          <Label x={510} y={244} anchor="middle" dim>
-            Dark maroon
-          </Label>
           <Label x={575} y={226} anchor="middle">
             Paunch
-          </Label>
-          <Label x={575} y={244} anchor="middle" dim>
-            Green-brown
           </Label>
         </>
       )

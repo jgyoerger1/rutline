@@ -11,7 +11,7 @@ import type { RackScene } from './scoring'
 
 type Scene = RackScene | 'intro' | 'outro'
 
-const FULL: Camera = { cx: 500, cy: 345, w: 760 }
+const FULL: Camera = { cx: 500, cy: 330, w: 760 }
 const CAMERAS: Record<Scene, Camera> = {
   intro: FULL,
   prep: FULL,
@@ -381,7 +381,7 @@ function Labels({ scene }: { scene: Scene }) {
       const pts = LOOP_F.map((f) => at(RIGHT.line, f).p)
       return (
         <>
-          <Label x={pts[0][0] + 30} y={pts[0][1] + 36} lead={[pts[0][0] + 12, pts[0][1] + 8]}>
+          <Label x={186} y={500} lead={[pts[0][0] - 14, pts[0][1] + 2]}>
             H1 · 4 4/8
           </Label>
           <Label x={pts[1][0] - 110} y={pts[1][1] + 40} lead={[pts[1][0] - 12, pts[1][1] + 6]}>
@@ -390,7 +390,7 @@ function Labels({ scene }: { scene: Scene }) {
           <Label x={pts[2][0] - 120} y={pts[2][1] - 10} lead={[pts[2][0] - 14, pts[2][1]]}>
             H3 · 4 2/8
           </Label>
-          <Label x={pts[3][0] - 120} y={pts[3][1] - 40} lead={[pts[3][0] - 12, pts[3][1] - 4]}>
+          <Label x={pts[3][0] - 150} y={pts[3][1] + 34} lead={[pts[3][0] - 12, pts[3][1] + 4]}>
             H4 · 3 4/8
           </Label>
         </>
@@ -410,14 +410,12 @@ function Labels({ scene }: { scene: Scene }) {
     case 'total':
     case 'outro':
       return (
-        <g fontSize="0.82em">
-          <Label x={500} y={126} anchor="middle">
-            L 68 4/8 · R 67 2/8 · spread 17 4/8 · abnormal 1 4/8
-          </Label>
-          <Label x={500} y={141} anchor="middle">
+        <text x={500} y={108} textAnchor="middle" fontSize="0.82em">
+          <tspan x={500}>L 68 4/8 · R 67 2/8 · spread 17 4/8 · abnormal 1 4/8</tspan>
+          <tspan x={500} dy="1.3em" fill={BONE}>
             Gross 154 6/8 · net 150 0/8
-          </Label>
-        </g>
+          </tspan>
+        </text>
       )
     default:
       return null
