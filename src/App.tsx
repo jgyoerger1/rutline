@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { CloudArrowUp, CloudCheck, CloudSlash, CloudWarning, MapTrifold, Scan, SlidersHorizontal, Wind, type IconWeight } from '@phosphor-icons/react'
+import { BookOpenText, CloudArrowUp, CloudCheck, CloudSlash, CloudWarning, MapTrifold, Scan, SlidersHorizontal, Wind, type IconWeight } from '@phosphor-icons/react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { AppCtx, useApp, type AppState, type View } from './components/AppContext'
 import Onboarding from './components/Onboarding'
@@ -23,14 +23,17 @@ const ForecastView = lazy(() => import('./components/weather/ForecastView'))
 const HuntCastView = lazy(() => import('./components/huntcast/HuntCastView'))
 const TrackerView = lazy(() => import('./components/tracker/TrackerView'))
 const MoreView = lazy(() => import('./components/more/MoreView'))
+const FieldGuideView = lazy(() => import('./components/guide/FieldGuideView'))
 
 type NavIcon = React.ComponentType<{ size?: number | string; weight?: IconWeight; className?: string }>
 
-const VIEWS: Array<{ id: View; label: string; Icon: NavIcon }> = [
+/** `short` is the label on the phone tab bar, where six tabs share the width */
+const VIEWS: Array<{ id: View; label: string; short?: string; Icon: NavIcon }> = [
   { id: 'map', label: 'Map', Icon: MapTrifold },
   { id: 'forecast', label: 'Wind', Icon: Wind },
   { id: 'huntcast', label: 'Predict', Icon: HoofIcon },
   { id: 'tracker', label: 'Track', Icon: Scan },
+  { id: 'guide', label: 'Field Guide', short: 'Guide', Icon: BookOpenText },
   { id: 'more', label: 'Settings', Icon: SlidersHorizontal },
 ]
 
@@ -206,12 +209,13 @@ export default function App() {
             {view !== 'map' && (
               <>
                 <TopoBackdrop />
-                <div className="absolute inset-0 overflow-y-auto overscroll-contain">
+                <div className="absolute inset-0 overflow-y-auto overscroll-contain" data-view-scroll>
                   <Suspense fallback={<ViewSkeleton />}>
                     <PageTransition id={view}>
                       {view === 'forecast' && <ForecastView />}
                       {view === 'huntcast' && <HuntCastView />}
                       {view === 'tracker' && <TrackerView />}
+                      {view === 'guide' && <FieldGuideView />}
                       {view === 'more' && <MoreView />}
                     </PageTransition>
                   </Suspense>
@@ -222,14 +226,14 @@ export default function App() {
 
           {/* Mobile tab bar */}
           <nav className="md:hidden shrink-0 glass border-t border-bone-50/8 pb-safe" aria-label="Primary">
-            <div className="grid grid-cols-5 h-16">
-              {VIEWS.map(({ id, label, Icon }) => {
+            <div className="grid grid-cols-6 h-16">
+              {VIEWS.map(({ id, label, short, Icon }) => {
                 const active = view === id
                 return (
-                  <motion.button key={id} whileTap={{ scale: 0.9 }} onClick={() => setView(id)} className={`relative flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-medium ${active ? 'text-ember-400' : 'text-bone-600'}`} aria-current={active ? 'page' : undefined}>
+                  <motion.button key={id} whileTap={{ scale: 0.9 }} onClick={() => setView(id)} className={`relative flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-medium ${active ? 'text-ember-400' : 'text-bone-600'}`} aria-current={active ? 'page' : undefined} aria-label={label}>
                     {active && <motion.span layoutId="tab-active" className="absolute top-1.5 w-9 h-1 rounded-full bg-ember-500" transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
                     <Icon size={22} weight={active ? 'fill' : 'regular'} />
-                    {label}
+                    {short ?? label}
                   </motion.button>
                 )
               })}

@@ -3,7 +3,7 @@ import type { DayScore } from '../lib/huntcast'
 import type { PeakGuess } from '../lib/rut'
 import type { Forecast, HomeGround, Settings } from '../lib/types'
 
-export type View = 'map' | 'forecast' | 'huntcast' | 'tracker' | 'more'
+export type View = 'map' | 'forecast' | 'huntcast' | 'tracker' | 'guide' | 'more'
 
 export interface AppState {
   settings: Settings

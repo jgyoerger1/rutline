@@ -250,3 +250,39 @@ input[type="range"] { accent-color: var(--color-ember-500); }
   .dw-pin.is-new { animation: none; }
   .skeleton::after { animation: none; }
 }
+
+/* ---------- Field Guide ---------- */
+/* Strong in-out for things that morph on screen (ribs spreading, the roll) */
+:root { --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1); }
+
+.fg-step { opacity: 0.32; transition: opacity 500ms var(--ease-expo); }
+.fg-step[data-active="1"] { opacity: 1; }
+
+.fg-dot { transition: transform 300ms var(--ease-expo), background-color 300ms ease; }
+
+/* The diagram: ribs spread, the scene rolls, the anatomy comes through once the cavity is open */
+.fg-scene { transform-box: fill-box; transform-origin: 50% 50%; transition: transform 1100ms var(--ease-in-out-strong); }
+svg[data-tilt="1"] .fg-scene { transform: rotate(-6deg); }
+.fg-ribs { transform-box: fill-box; transition: transform 900ms var(--ease-in-out-strong); }
+.fg-ribs-top { transform-origin: 0% 100%; }
+.fg-ribs-bot { transform-origin: 0% 0%; }
+svg[data-spread="1"] .fg-ribs-top { transform: rotate(-7deg); }
+svg[data-spread="1"] .fg-ribs-bot { transform: rotate(7deg); }
+.fg-anatomy { opacity: 0.42; transition: opacity 800ms var(--ease-expo); }
+svg[data-open="1"] .fg-anatomy { opacity: 1; }
+
+.fg-card { transition: transform 300ms var(--ease-expo), border-color 300ms ease; }
+.fg-arrow { transition: transform 300ms var(--ease-expo); }
+@media (hover: hover) and (pointer: fine) {
+  .fg-card:hover { transform: translateY(-2px); border-color: rgba(232, 112, 44, 0.45); }
+  .fg-card:hover .fg-arrow { transform: translateX(3px); }
+}
+
+@keyframes fg-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+.fg-bounce { animation: fg-bounce 1.6s var(--ease-in-out-strong) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fg-bounce { animation: none; }
+  .fg-scene, .fg-ribs { transition: none; }
+  .fg-card:hover { transform: none; }
+}
