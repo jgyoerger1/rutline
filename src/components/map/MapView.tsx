@@ -246,9 +246,10 @@ export default function MapView({ active }: { active: boolean }) {
       </div>
 
       {/* Top controls */}
-      <div className="absolute top-3 left-3 right-3 z-10 flex items-start gap-2 pointer-events-none overflow-x-auto no-bar">
+      <div className="absolute top-3 left-3 right-3 z-10 flex flex-col gap-2 pointer-events-none">
+      <div className="flex flex-wrap items-start gap-2">
         {now && (
-          <button onClick={() => setView('forecast')} className="push pointer-events-auto glass rounded-xl h-11 px-3 inline-flex items-center gap-2 text-sm">
+          <button onClick={() => setView('forecast')} className="push pointer-events-auto shrink-0 whitespace-nowrap glass rounded-xl h-11 px-3 inline-flex items-center gap-2 text-sm">
             <ArrowUp size={16} weight="bold" className="text-ember-400" style={{ transform: `rotate(${now.windDir + 180}deg)` }} />
             <span className="font-medium">{degToCompass(now.windDir)}</span>
             <span className="font-mono text-bone-400 tnum">{Math.round(settings.units === 'metric' ? now.windMph * 1.60934 : now.windMph)} {settings.units === 'metric' ? 'km/h' : 'mph'}</span>
@@ -258,7 +259,7 @@ export default function MapView({ active }: { active: boolean }) {
           onClick={() => setSettings({ parcelsEnabled: !settings.parcelsEnabled })}
           aria-pressed={settings.parcelsEnabled}
           title="Property lines"
-          className={`push pointer-events-auto glass rounded-xl h-11 px-3 inline-flex items-center gap-2 text-sm ${settings.parcelsEnabled ? 'text-bone-50' : 'text-bone-400'}`}
+          className={`push pointer-events-auto shrink-0 glass rounded-xl h-11 px-3 inline-flex items-center gap-2 text-sm ${settings.parcelsEnabled ? 'text-bone-50' : 'text-bone-400'}`}
         >
           <ParcelsIcon size={16} weight={settings.parcelsEnabled ? 'fill' : 'regular'} className={settings.parcelsEnabled ? 'text-ember-400' : ''} />
           <span className="font-medium hidden md:inline">Lines</span>
@@ -301,9 +302,8 @@ export default function MapView({ active }: { active: boolean }) {
           <Segmented id="layer" value={settings.mapLayer} onChange={(mapLayer) => setSettings({ mapLayer })} options={[{ value: 'satellite', label: 'Sat' }, { value: 'topo', label: 'Topo' }, { value: 'streets', label: 'Streets' }]} className="glass" />
         </div>
       </div>
-
       {typesPresent.length > 1 && (
-        <div className="absolute top-[62px] left-3 right-3 z-10 overflow-x-auto no-bar pointer-events-none">
+        <div className="overflow-x-auto no-bar -mx-3 px-3">
           <div className="flex gap-1.5 min-w-max pointer-events-auto pr-4">
             <Chip active={filter.size === 0} onClick={() => setFilter(new Set())}>
               All
@@ -329,6 +329,7 @@ export default function MapView({ active }: { active: boolean }) {
           </div>
         </div>
       )}
+      </div>
 
       {/* Right-side controls */}
       <div className="absolute right-3 bottom-6 z-10 flex flex-col gap-2 items-end">
