@@ -9,6 +9,8 @@ const DEFAULTS: Settings = {
   units: 'imperial',
   rutPeakOverride: null,
   mapLayer: 'satellite',
+  terrainOn: false,
+  terrain: 'hillshade',
   trackerMode: 'high',
   trackerColor: 'red',
   trackerSound: true,

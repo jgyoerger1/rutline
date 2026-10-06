@@ -119,6 +119,8 @@ export interface Trail extends SyncMeta {
 
 export type Units = 'imperial' | 'metric'
 export type MapLayer = 'satellite' | 'topo' | 'streets'
+/** LiDAR terrain overlay renders from the USGS 3DEP service */
+export type TerrainMode = 'hillshade' | 'slope' | 'contours'
 export type TrackerMode = 'low' | 'high' | 'soil'
 export type TrackerColor = 'red' | 'yellow' | 'green'
 
@@ -167,6 +169,9 @@ export interface Settings {
   /** 'MM-DD' override of the assumed peak-breeding date */
   rutPeakOverride: string | null
   mapLayer: MapLayer
+  /** LiDAR terrain overlay on the map */
+  terrainOn: boolean
+  terrain: TerrainMode
   trackerMode: TrackerMode
   trackerColor: TrackerColor
   trackerSound: boolean

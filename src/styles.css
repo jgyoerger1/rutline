@@ -286,3 +286,9 @@ svg[data-open="1"] .fg-anatomy { opacity: 1; }
   .fg-scene, .fg-ribs { transition: none; }
   .fg-card:hover { transform: none; }
 }
+
+/* LiDAR terrain overlay: crossfade between renders; the pane itself multiplies onto the basemap */
+.terrain-image { transition: opacity 320ms var(--ease-expo); }
+/* Hillshade flats are light grey; push them to white so multiply leaves them alone and shadows bite */
+.terrain-hillshade { filter: contrast(1.5) brightness(1.12); }
+.terrain-contours { filter: contrast(1.2); }

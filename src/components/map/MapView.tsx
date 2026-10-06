@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowUp, Check, CrosshairSimple, GpsFix, List, MapPin, Path, Plus, Polygon as ParcelsIcon, Trash, X } from '@phosphor-icons/react'
+import { ArrowUp, Check, CrosshairSimple, GpsFix, List, MapPin, Mountains, Path, Plus, Polygon as ParcelsIcon, Trash, X } from '@phosphor-icons/react'
 import L from 'leaflet'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
@@ -16,6 +16,7 @@ import { markerHtml, TYPE_ICON } from '../icons'
 import { Button, Chip, Field, IconButton, Input, SectionLabel, Segmented, Sheet, Textarea } from '../ui'
 import LetterSheet, { type LetterTarget } from './LetterSheet'
 import ParcelLayer, { type ParcelStatus } from './ParcelLayer'
+import TerrainLayer, { type TerrainState } from './TerrainLayer'
 import ParcelSheet from './ParcelSheet'
 import WaypointSheet from './WaypointSheet'
 
@@ -130,6 +131,7 @@ export default function MapView({ active }: { active: boolean }) {
   const center: [number, number] = home ? [home.lat, home.lon] : [39.5, -98.35]
   const zoom = home ? 15 : 4
   const layer = LAYERS[settings.mapLayer]
+  const [terrainStatus, setTerrainStatus] = useState<TerrainState>('off')
 
   // Scent cone from the selected stand, using the current wind
   const cone = useMemo(() => {
@@ -152,6 +154,7 @@ export default function MapView({ active }: { active: boolean }) {
       <div className="absolute inset-0 isolate z-0">
       <MapContainer center={center} zoom={zoom} zoomControl={false} attributionControl className="w-full h-full" ref={mapRef as never} maxZoom={20} preferCanvas>
         <TileLayer key={settings.mapLayer} url={layer.url} attribution={layer.attribution} maxNativeZoom={layer.maxNativeZoom} maxZoom={20} />
+        <TerrainLayer enabled={settings.terrainOn} mode={settings.terrain} onStatus={setTerrainStatus} />
         <MapEvents onClick={onMapClick} />
         <FlyToHome home={home} />
         <ParcelLayer
@@ -243,7 +246,7 @@ export default function MapView({ active }: { active: boolean }) {
       </div>
 
       {/* Top controls */}
-      <div className="absolute top-3 left-3 right-3 z-10 flex items-start gap-2 pointer-events-none">
+      <div className="absolute top-3 left-3 right-3 z-10 flex items-start gap-2 pointer-events-none overflow-x-auto no-bar">
         {now && (
           <button onClick={() => setView('forecast')} className="push pointer-events-auto glass rounded-xl h-11 px-3 inline-flex items-center gap-2 text-sm">
             <ArrowUp size={16} weight="bold" className="text-ember-400" style={{ transform: `rotate(${now.windDir + 180}deg)` }} />
@@ -258,7 +261,7 @@ export default function MapView({ active }: { active: boolean }) {
           className={`push pointer-events-auto glass rounded-xl h-11 px-3 inline-flex items-center gap-2 text-sm ${settings.parcelsEnabled ? 'text-bone-50' : 'text-bone-400'}`}
         >
           <ParcelsIcon size={16} weight={settings.parcelsEnabled ? 'fill' : 'regular'} className={settings.parcelsEnabled ? 'text-ember-400' : ''} />
-          <span className="font-medium">Lines</span>
+          <span className="font-medium hidden md:inline">Lines</span>
           {settings.parcelsEnabled && (
             <span className="font-mono text-[11px] text-bone-400 tnum inline-flex items-center gap-1.5">
               {parcelStatus.state === 'loading' && <span className="w-1.5 h-1.5 rounded-full bg-ember-400 breathe" />}
@@ -266,7 +269,35 @@ export default function MapView({ active }: { active: boolean }) {
             </span>
           )}
         </button>
-        <div className="ml-auto pointer-events-auto">
+        <button
+          onClick={() => {
+            // Desktop: the chip toggles and the segmented picks the mode. Phone: no room, so the chip cycles.
+            if (window.innerWidth >= 768) setSettings({ terrainOn: !settings.terrainOn })
+            else if (!settings.terrainOn) setSettings({ terrainOn: true, terrain: 'hillshade' })
+            else if (settings.terrain === 'hillshade') setSettings({ terrain: 'slope' })
+            else if (settings.terrain === 'slope') setSettings({ terrain: 'contours' })
+            else setSettings({ terrainOn: false })
+          }}
+          aria-pressed={settings.terrainOn}
+          title="LiDAR terrain (USGS 3DEP)"
+          className={`push pointer-events-auto shrink-0 glass rounded-xl h-11 px-3 inline-flex items-center gap-2 text-sm ${settings.terrainOn ? 'text-bone-50' : 'text-bone-400'}`}
+        >
+          <Mountains size={16} weight={settings.terrainOn ? 'fill' : 'regular'} className={settings.terrainOn ? 'text-ember-400' : ''} />
+          <span className="font-medium hidden md:inline">Terrain</span>
+          {settings.terrainOn && (
+            <span className="font-mono text-[11px] text-bone-400 tnum inline-flex items-center gap-1.5">
+              <span className="md:hidden text-bone-50">{settings.terrain === 'hillshade' ? 'shade' : settings.terrain === 'slope' ? 'slope' : '5 ft'}</span>
+              {terrainStatus === 'loading' && <span className="w-1.5 h-1.5 rounded-full bg-ember-400 breathe" />}
+              {terrainStatus === 'zoom' ? 'zoom in' : terrainStatus === 'error' ? 'offline' : ''}
+            </span>
+          )}
+        </button>
+        {settings.terrainOn && (
+          <div className="hidden md:block shrink-0 pointer-events-auto">
+            <Segmented id="terrain" value={settings.terrain} onChange={(terrain) => setSettings({ terrain })} options={[{ value: 'hillshade', label: 'Shade' }, { value: 'slope', label: 'Slope' }, { value: 'contours', label: '5 ft' }]} className="glass" />
+          </div>
+        )}
+        <div className="ml-auto shrink-0 pointer-events-auto">
           <Segmented id="layer" value={settings.mapLayer} onChange={(mapLayer) => setSettings({ mapLayer })} options={[{ value: 'satellite', label: 'Sat' }, { value: 'topo', label: 'Topo' }, { value: 'streets', label: 'Streets' }]} className="glass" />
         </div>
       </div>
