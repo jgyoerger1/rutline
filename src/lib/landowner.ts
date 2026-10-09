@@ -67,7 +67,7 @@ export function titleCase(s: string): string {
   return s
     .toLowerCase()
     .replace(/\b([a-z])([a-z']*)/g, (_m, a: string, b: string) => a.toUpperCase() + b)
-    .replace(/\b(Llc|Lp|Llp|Ltd|Usa|Dnr|Hoa)\b/g, (m) => m.toUpperCase())
+    .replace(/\b(Llc|Lp|Llp|Ltd|Usa|Dnr|Hoa|Cwd)\b/g, (m) => m.toUpperCase())
     .replace(/(?<=.)\b(Of|And|The)\b/g, (m) => m.toLowerCase())
     .replace(/\bMc([a-z])/g, (_m, c: string) => 'Mc' + c.toUpperCase())
 }

@@ -146,6 +146,8 @@ export interface ParcelFieldMap {
   mailAddress?: string
   /** Or several fields: street part(s), then city, state, zip */
   mailParts?: string[]
+  /** Or address lines as printed on the envelope, joined with commas */
+  mailLines?: string[]
   situs?: string
   /** Or the site address split up: number, direction, name, suffix, then city last if present */
   situsParts?: string[]
@@ -180,6 +182,10 @@ export interface Settings {
   /** LiDAR terrain overlay on the map */
   terrainOn: boolean
   terrain: TerrainMode
+  /** Public land (PAD-US) and walk-in access programs */
+  publicOn: boolean
+  /** State deer hunting units */
+  unitsOn: boolean
   trackerMode: TrackerMode
   trackerColor: TrackerColor
   trackerSound: boolean

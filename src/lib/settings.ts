@@ -11,6 +11,8 @@ const DEFAULTS: Settings = {
   mapLayer: 'satellite',
   terrainOn: false,
   terrain: 'hillshade',
+  publicOn: false,
+  unitsOn: false,
   trackerMode: 'high',
   trackerColor: 'red',
   trackerSound: true,

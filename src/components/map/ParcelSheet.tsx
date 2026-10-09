@@ -128,6 +128,7 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
                 </div>
               )}
               {p.mailName && p.mailName !== p.owner && <div className="text-[12.5px] text-bone-400 mt-0.5">Tax bill to {p.mailName}</div>}
+              {p.owner && p.ownerAsOf && <div className="text-[12.5px] text-ember-300 mt-0.5">Owner on the {p.ownerAsOf} record. It may have changed since.</div>}
               {p.units > 1 && <div className="text-[12.5px] text-bone-400 mt-0.5">{p.units} unit records share this footprint (condo or association). The name shown is the first on file.</div>}
             </div>
 

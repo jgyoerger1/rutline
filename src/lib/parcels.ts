@@ -31,6 +31,20 @@ export interface ParcelSource {
   recordsUrl?: string
   /** ArcGIS Online account that published a discovered layer */
   publisher?: string
+  /** Server page size when it is below 2000; we page with resultOffset */
+  pageSize?: number
+  /** SQL filter applied to every query */
+  where?: string
+  /** Owner fields live in a related table, joined on this field */
+  ownerTable?: { url: string; joinField: string }
+  /** Where owner names are actually present. Default: everywhere the layer has rows. */
+  ownerCounties?: { only?: string[]; except?: string[] }
+  /** Names are a snapshot from this year; still shown, but county layers are sought */
+  ownerAsOf?: number
+  /** Names exist for some places but not reliably; keep looking for county layers */
+  ownerPartial?: boolean
+  /** Server rejects a named field list; ask for every field */
+  allFields?: boolean
 }
 
 export interface Parcel {
@@ -42,6 +56,8 @@ export interface Parcel {
   county: string
   state: string
   stateName: string
+  /** Year of the owner snapshot when the source is old */
+  ownerAsOf: number | null
   owner: string | null
   mailName: string | null
   mailAddress: string | null
@@ -111,9 +127,21 @@ export function sourcesFor(bbox: BBox, custom: CustomParcelSource | null): Parce
   return out
 }
 
-/** True when some source in the list names owners for this county. */
+/** True when some source in the list names current owners for this county. */
 export function namesOwnersFor(sources: ParcelSource[], state: string, county: string): boolean {
-  return sources.some((s) => !!s.fields.owner && (s.kind === 'custom' || (s.state === state && (s.kind === 'statewide' || sameCounty(s.county, county)))))
+  const thisYear = new Date().getFullYear()
+  return sources.some((s) => {
+    if (!s.fields.owner) return false
+    if (s.kind === 'custom') return true
+    if (s.state !== state) return false
+    if (s.kind !== 'statewide') return sameCounty(s.county, county)
+    if (s.ownerAsOf && thisYear - s.ownerAsOf > 2) return false
+    if (s.ownerPartial) return false
+    const oc = s.ownerCounties
+    if (oc?.only) return oc.only.some((c) => sameCounty(c, county))
+    if (oc?.except) return !oc.except.some((c) => sameCounty(c, county))
+    return true
+  })
 }
 
 export interface ParcelResult {
@@ -199,8 +227,33 @@ export async function fetchParcelsFor(bbox: BBox, custom: CustomParcelSource | n
 }
 
 function outFields(f: ParcelFieldMap): string[] {
-  const list = [f.parcelId, f.owner, f.owner2, f.mailName, f.mailAddress, f.situs, f.acres, f.landUse, f.county, f.link, ...(f.mailParts ?? []), ...(f.situsParts ?? [])]
+  const list = [f.parcelId, f.owner, f.owner2, f.mailName, f.mailAddress, f.situs, f.acres, f.landUse, f.county, f.link, ...(f.mailParts ?? []), ...(f.mailLines ?? []), ...(f.situsParts ?? [])]
   return Array.from(new Set(list.filter((x): x is string => !!x)))
+}
+
+/** Owner fields kept in a related table: fetch them for these parcels and merge them in. */
+async function joinOwnerTable(source: ParcelSource, feats: Array<{ properties: Record<string, unknown> }>, signal: AbortSignal) {
+  const t = source.ownerTable!
+  const ids = Array.from(new Set(feats.map((f) => f.properties[t.joinField]).filter((v): v is string | number => v != null && v !== '')))
+  const rows = new Map<string, Record<string, unknown>>()
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100)
+    const where = `${t.joinField} IN (${chunk.map((v) => (typeof v === 'number' ? String(v) : `'${String(v).replace(/'/g, "''")}'`)).join(',')})`
+    // POST: a hundred IDs overflow some servers' URL limits. Form-encoded POST needs no CORS preflight.
+    const body = new URLSearchParams({ where, outFields: '*', returnGeometry: 'false', f: 'json' })
+    const res = await fetch(`${t.url}/query`, { method: 'POST', body, signal })
+    let j: { features?: Array<{ attributes: Record<string, unknown> }> } = {}
+    try {
+      j = await res.json()
+    } catch {
+      continue // an HTML error page: leave these parcels without the joined fields
+    }
+    for (const r of j.features ?? []) rows.set(String(r.attributes[t.joinField]), r.attributes)
+  }
+  for (const f of feats) {
+    const r = rows.get(String(f.properties[t.joinField]))
+    if (r) for (const [k, v] of Object.entries(r)) if (f.properties[k] == null || f.properties[k] === '') f.properties[k] = v
+  }
 }
 
 /**
@@ -225,42 +278,54 @@ async function fetchTiled(source: ParcelSource, bbox: BBox, signal: AbortSignal,
   return { parcels: Array.from(seen.values()), truncated: parts.some((x) => x.truncated) }
 }
 
+type RawParcel = { properties: Record<string, unknown>; geometry: Polygon | MultiPolygon | null }
+
+async function fetchPage(source: ParcelSource, params: URLSearchParams, signal: AbortSignal): Promise<{ feats: RawParcel[]; exceeded: boolean }> {
+  let res = await fetch(`${source.url}/query?${params.toString()}&f=geojson`, { signal })
+  let body: unknown = await res.json()
+  const fc = body as { type?: string; features?: RawParcel[]; exceededTransferLimit?: boolean; properties?: { exceededTransferLimit?: boolean }; error?: { message?: string } }
+  if (res.ok && !fc.error && fc.type === 'FeatureCollection') return { feats: fc.features ?? [], exceeded: !!(fc.exceededTransferLimit || fc.properties?.exceededTransferLimit) }
+  // Older ArcGIS Servers: ask for Esri JSON and convert
+  res = await fetch(`${source.url}/query?${params.toString()}&f=json`, { signal })
+  body = await res.json()
+  const ej = body as { features?: Array<{ attributes: Record<string, unknown>; geometry?: { rings?: Position[][] } }>; exceededTransferLimit?: boolean; error?: { message?: string } }
+  if (ej.error) throw new Error(ej.error.message || 'query rejected')
+  return { feats: (ej.features ?? []).map((f) => ({ properties: f.attributes, geometry: f.geometry?.rings ? ringsToGeoJSON(f.geometry.rings) : null })), exceeded: !!ej.exceededTransferLimit }
+}
+
 async function fetchOne(source: ParcelSource, bbox: BBox, signal: AbortSignal): Promise<{ parcels: Parcel[]; truncated: boolean }> {
-  const base = new URLSearchParams({
+  const size = Math.min(PAGE, source.pageSize ?? PAGE)
+  const params = new URLSearchParams({
+    where: source.where ?? '1=1',
     geometry: bbox.map((v) => v.toFixed(6)).join(','),
     geometryType: 'esriGeometryEnvelope',
     inSR: '4326',
     spatialRel: 'esriSpatialRelIntersects',
-    outFields: outFields(source.fields).join(',') || '*',
+    // A joined owner table means the polygon layer lacks some mapped fields; take what it has
+    outFields: source.ownerTable || source.allFields ? '*' : outFields(source.fields).join(',') || '*',
     returnGeometry: 'true',
     outSR: '4326',
     geometryPrecision: '6',
-    resultRecordCount: String(PAGE),
+    resultRecordCount: String(size),
   })
-  const url = `${source.url}/query?${base.toString()}&f=geojson`
-  let res = await fetch(url, { signal })
-  let body: unknown = await res.json()
-  let fc = body as { type?: string; features?: Array<{ properties: Record<string, unknown>; geometry: Polygon | MultiPolygon | null }>; exceededTransferLimit?: boolean; properties?: { exceededTransferLimit?: boolean }; error?: { message?: string } }
-  if (!res.ok || fc.error || fc.type !== 'FeatureCollection') {
-    // Older ArcGIS Servers: ask for Esri JSON and convert
-    res = await fetch(`${source.url}/query?${base.toString()}&f=json`, { signal })
-    body = await res.json()
-    const ej = body as { features?: Array<{ attributes: Record<string, unknown>; geometry?: { rings?: Position[][] } }>; exceededTransferLimit?: boolean; error?: { message?: string } }
-    if (ej.error) throw new Error(ej.error.message || 'query rejected')
-    fc = {
-      type: 'FeatureCollection',
-      features: (ej.features ?? []).map((f) => ({ properties: f.attributes, geometry: f.geometry?.rings ? ringsToGeoJSON(f.geometry.rings) : null })),
-      exceededTransferLimit: ej.exceededTransferLimit,
-    }
+  // Small server pages: walk them until we hold about PAGE parcels
+  const maxPages = Math.max(1, Math.ceil(PAGE / size))
+  const feats: RawParcel[] = []
+  let exceeded = false
+  for (let page = 0; page < maxPages; page++) {
+    if (page) params.set('resultOffset', String(page * size))
+    const r = await fetchPage(source, params, signal)
+    feats.push(...r.feats)
+    exceeded = r.exceeded || r.feats.length >= size
+    if (!exceeded) break
   }
-  const feats = fc.features ?? []
+  if (source.ownerTable && feats.length) await joinOwnerTable(source, feats, signal)
   const parcels: Parcel[] = []
   for (const f of feats) {
     if (!f.geometry || (f.geometry.type !== 'Polygon' && f.geometry.type !== 'MultiPolygon')) continue
     parcels.push(normalize(source, f.properties ?? {}, f.geometry))
   }
-  const truncated = !!(fc.exceededTransferLimit || fc.properties?.exceededTransferLimit) || feats.length >= PAGE
-  return { parcels, truncated }
+  return { parcels, truncated: exceeded }
 }
 
 const str = (v: unknown): string | null => {
@@ -288,7 +353,9 @@ function normalize(source: ParcelSource, p: Record<string, unknown>, geometry: P
   const owner = [o1, o2 && o2 !== o1 ? o2 : null].filter(Boolean).join(' & ') || null
   let mail = get(f.mailAddress)
   if (!mail && f.mailParts?.length) mail = joinAddress(f.mailParts.map((k) => str(p[k])))
+  if (!mail && f.mailLines?.length) mail = f.mailLines.map((k) => str(p[k])).filter(Boolean).join(', ') || null
   let situs = get(f.situs)
+  if (situs && /^0+$/.test(situs)) situs = null
   if (!situs && f.situsParts?.length) {
     const vals = f.situsParts.map((k) => str(p[k]))
     const last = f.situsParts[f.situsParts.length - 1]
@@ -313,6 +380,7 @@ function normalize(source: ParcelSource, p: Record<string, unknown>, geometry: P
     county,
     state: source.state,
     stateName,
+    ownerAsOf: source.ownerAsOf ?? null,
     owner,
     mailName: get(f.mailName),
     mailAddress: mail,
@@ -505,3 +573,5 @@ export function guessFields(names: string[]): ParcelFieldMap {
   g.county = pick([/^county(_?name)?$/i])
   return g
 }
+
+if (import.meta.env.DEV) (window as unknown as { __fetchParcels: typeof fetchParcelsFor }).__fetchParcels = fetchParcelsFor

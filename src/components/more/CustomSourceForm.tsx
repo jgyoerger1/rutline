@@ -4,7 +4,7 @@ import type { CustomParcelSource, ParcelFieldMap } from '../../lib/types'
 import { useApp } from '../AppContext'
 import { Button, Field, Input } from '../ui'
 
-const SLOTS: Array<{ key: keyof Omit<ParcelFieldMap, 'mailParts' | 'situsParts'>; label: string; hint: string }> = [
+const SLOTS: Array<{ key: keyof Omit<ParcelFieldMap, 'mailParts' | 'situsParts' | 'mailLines'>; label: string; hint: string }> = [
   { key: 'parcelId', label: 'Parcel ID', hint: 'PIN, APN, parcel number' },
   { key: 'owner', label: 'Owner name', hint: 'The field that holds the deeded owner' },
   { key: 'owner2', label: 'Second owner', hint: 'Optional' },

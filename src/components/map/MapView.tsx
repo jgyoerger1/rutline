@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowUp, Check, CrosshairSimple, GpsFix, List, MapPin, Mountains, Path, Plus, Polygon as ParcelsIcon, Trash, X } from '@phosphor-icons/react'
+import { ArrowUp, Check, CrosshairSimple, GpsFix, List, MapPin, Mountains, Path, Plus, Polygon as ParcelsIcon, Signpost, Trash, TreeEvergreen, X } from '@phosphor-icons/react'
 import L from 'leaflet'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
@@ -17,6 +17,11 @@ import { Button, Chip, Field, IconButton, Input, SectionLabel, Segmented, Sheet,
 import LetterSheet, { type LetterTarget } from './LetterSheet'
 import ParcelLayer, { type ParcelStatus } from './ParcelLayer'
 import TerrainLayer, { type TerrainState } from './TerrainLayer'
+import OverlayLayer, { type OverlayState } from './OverlayLayer'
+import PlaceSheet, { type Place } from './PlaceSheet'
+import { UNIT_SOURCES, unitMapLabel } from '../../lib/huntUnits'
+import { overlaysAt } from '../../lib/overlays'
+import { ACCESS_SOURCES, PUBLIC_SOURCES, accessStyle, publicStyle } from '../../lib/publicLand'
 import ParcelSheet from './ParcelSheet'
 import { rejectDiscovered } from '../../lib/parcelDiscovery'
 import WaypointSheet from './WaypointSheet'
@@ -26,6 +31,8 @@ const LAYERS: Record<MapLayer, { url: string; attribution: string; maxNativeZoom
   topo: { url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', attribution: 'USGS The National Map', maxNativeZoom: 16 },
   streets: { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '© OpenStreetMap contributors', maxNativeZoom: 19 },
 }
+
+const unitStyle = (): L.PathOptions => ({ color: '#f2ede2', weight: 1.6, opacity: 0.75, dashArray: '10 6', fill: false })
 
 type AddMode = { kind: 'point'; type: WaypointType } | { kind: 'trail'; trail: TrailKind; points: [number, number][] } | null
 
@@ -52,6 +59,9 @@ export default function MapView({ active }: { active: boolean }) {
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null)
   const [parcelStatus, setParcelStatus] = useState<ParcelStatus>({ state: 'off', count: 0, truncated: false, sources: [] })
   const [letter, setLetter] = useState<LetterTarget | null>(null)
+  const [place, setPlace] = useState<Place | null>(null)
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
   const onParcelStatus = useCallback((s: ParcelStatus) => setParcelStatus(s), [])
   const [parcelReload, setParcelReload] = useState(0)
   const { fix, error: geoError } = useWatchPosition(watch)
@@ -99,6 +109,10 @@ export default function MapView({ active }: { active: boolean }) {
         setSelectedId(null)
         setSelectedTrail(null)
         setSelectedParcel(null)
+        if (settingsRef.current.publicOn || settingsRef.current.unitsOn) {
+          const at = overlaysAt(lat, lon)
+          if (at.public.length || at.access.length || at.units.length) setPlace({ lat, lon, ...at })
+        }
         return
       }
       if (addMode.kind === 'point') void placePoint(addMode.type, lat, lon)
@@ -134,6 +148,11 @@ export default function MapView({ active }: { active: boolean }) {
   const zoom = home ? 15 : 4
   const layer = LAYERS[settings.mapLayer]
   const [terrainStatus, setTerrainStatus] = useState<TerrainState>('off')
+  const [publicStatus, setPublicStatus] = useState<OverlayState>('off')
+  const [unitsStatus, setUnitsStatus] = useState<OverlayState>('off')
+  const onPublicStatus = useCallback((s: OverlayState) => setPublicStatus(s), [])
+  const onAccessStatus = useCallback(() => {}, [])
+  const onUnitsStatus = useCallback((s: OverlayState) => setUnitsStatus(s), [])
 
   // Scent cone from the selected stand, using the current wind
   const cone = useMemo(() => {
@@ -157,6 +176,9 @@ export default function MapView({ active }: { active: boolean }) {
       <MapContainer center={center} zoom={zoom} zoomControl={false} attributionControl className="w-full h-full" ref={mapRef as never} maxZoom={20} preferCanvas>
         <TileLayer key={settings.mapLayer} url={layer.url} attribution={layer.attribution} maxNativeZoom={layer.maxNativeZoom} maxZoom={20} />
         <TerrainLayer enabled={settings.terrainOn} mode={settings.terrain} onStatus={setTerrainStatus} />
+        <OverlayLayer kind="public" enabled={settings.publicOn} sources={PUBLIC_SOURCES} minZoom={9} style={publicStyle} onStatus={onPublicStatus} />
+        <OverlayLayer kind="access" enabled={settings.publicOn} sources={ACCESS_SOURCES} minZoom={9} style={accessStyle} onStatus={onAccessStatus} />
+        <OverlayLayer kind="units" enabled={settings.unitsOn} sources={UNIT_SOURCES} minZoom={7} style={unitStyle} label={unitMapLabel} onStatus={onUnitsStatus} />
         <MapEvents onClick={onMapClick} />
         <FlyToHome home={home} />
         <ParcelLayer
@@ -270,6 +292,36 @@ export default function MapView({ active }: { active: boolean }) {
             <span className="font-mono text-[11px] text-bone-400 tnum inline-flex items-center gap-1.5">
               {(parcelStatus.state === 'loading' || parcelStatus.state === 'finding') && <span className="w-1.5 h-1.5 rounded-full bg-ember-400 breathe" />}
               {parcelStatus.state === 'zoom' ? 'zoom in' : parcelStatus.state === 'finding' ? 'finding county' : parcelStatus.state === 'ready' ? `${parcelStatus.count}${parcelStatus.truncated ? '+' : ''}` : parcelStatus.state === 'empty' ? 'none here' : parcelStatus.state === 'nosource' ? 'no source' : parcelStatus.state === 'error' ? 'offline' : ''}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setSettings({ publicOn: !settings.publicOn })}
+          aria-pressed={settings.publicOn}
+          title="Public land and walk-in access"
+          className={`push pointer-events-auto shrink-0 glass rounded-xl h-11 px-3 inline-flex items-center gap-2 text-sm ${settings.publicOn ? 'text-bone-50' : 'text-bone-400'}`}
+        >
+          <TreeEvergreen size={16} weight={settings.publicOn ? 'fill' : 'regular'} className={settings.publicOn ? 'text-[#a9c79a]' : ''} />
+          <span className="font-medium hidden md:inline">Public</span>
+          {settings.publicOn && (
+            <span className="font-mono text-[11px] text-bone-400 tnum inline-flex items-center gap-1.5">
+              {publicStatus === 'loading' && <span className="w-1.5 h-1.5 rounded-full bg-ember-400 breathe" />}
+              {publicStatus === 'zoom' ? 'zoom in' : publicStatus === 'empty' ? 'none here' : publicStatus === 'error' ? 'offline' : ''}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setSettings({ unitsOn: !settings.unitsOn })}
+          aria-pressed={settings.unitsOn}
+          title="Deer hunting units"
+          className={`push pointer-events-auto shrink-0 glass rounded-xl h-11 px-3 inline-flex items-center gap-2 text-sm ${settings.unitsOn ? 'text-bone-50' : 'text-bone-400'}`}
+        >
+          <Signpost size={16} weight={settings.unitsOn ? 'fill' : 'regular'} className={settings.unitsOn ? 'text-ember-400' : ''} />
+          <span className="font-medium hidden md:inline">Units</span>
+          {settings.unitsOn && (
+            <span className="font-mono text-[11px] text-bone-400 tnum inline-flex items-center gap-1.5">
+              {unitsStatus === 'loading' && <span className="w-1.5 h-1.5 rounded-full bg-ember-400 breathe" />}
+              {unitsStatus === 'zoom' ? 'zoom in' : unitsStatus === 'nosource' ? 'by county' : unitsStatus === 'error' ? 'offline' : ''}
             </span>
           )}
         </button>
@@ -488,6 +540,7 @@ export default function MapView({ active }: { active: boolean }) {
       />
 
       <LetterSheet target={letter} onClose={() => setLetter(null)} />
+      <PlaceSheet place={place} onClose={() => setPlace(null)} />
 
       <TrailSheet trail={trails?.find((t) => t.id === selectedTrail) ?? null} onClose={() => setSelectedTrail(null)} onZoom={(t) => mapRef.current?.fitBounds(L.latLngBounds(t.points), { padding: [60, 60] })} />
     </div>

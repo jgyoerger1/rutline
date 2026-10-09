@@ -292,3 +292,20 @@ svg[data-open="1"] .fg-anatomy { opacity: 1; }
 /* Hillshade flats are light grey; push them to white so multiply leaves them alone and shadows bite */
 .terrain-hillshade { filter: contrast(1.5) brightness(1.12); }
 .terrain-contours { filter: contrast(1.2); }
+
+/* Overlay labels: hunt unit names over the map, small mono caps with a dark halo */
+.ov-label { position: relative; }
+.ov-label span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-bone-50);
+  text-shadow: 0 0 3px rgba(15, 17, 16, 0.95), 0 0 8px rgba(15, 17, 16, 0.8);
+  pointer-events: none;
+}
