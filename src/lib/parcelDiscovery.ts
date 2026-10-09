@@ -170,8 +170,24 @@ async function getJson<T>(url: string, ms = 9000): Promise<T> {
   }
 }
 
+/** Pennsylvania has no statewide layer, but Penn State's PASDA hosts ~45 county parcel services under predictable names. */
+async function tryPasda(ref: CountyRef, lat: number, lon: number, rejected: Set<string>): Promise<ParcelSource | null> {
+  if (ref.state !== 'PA') return null
+  const name = ref.county.replace(/[^A-Za-z]/g, '')
+  for (const svc of [`${name}County`, `${name}CountyParcels`]) {
+    const url = `https://mapservices.pasda.psu.edu/server/rest/services/pasda/${svc}/MapServer`
+    if (rejected.has(url)) continue
+    const item: Item = { id: '', title: `${ref.county} County Parcels (PASDA)`, owner: 'PASDA', url, access: 'public', type: 'Map Service', modified: Date.now(), extent: [[lon - 0.6, lat - 0.45], [lon + 0.6, lat + 0.45]] }
+    const found = await tryService(item, ref, lat, lon, true).catch(() => null)
+    if (found) return { ...found, recordsUrl: 'https://www.pasda.psu.edu/' }
+  }
+  return null
+}
+
 async function run(ref: CountyRef, lat: number, lon: number): Promise<ParcelSource | null> {
   const rejected = new Set(read<string[]>(REJECT_KEY, []))
+  const pasda = await tryPasda(ref, lat, lon, rejected)
+  if (pasda) return pasda
   const d = 0.02
   const q = `"${ref.county}" AND (parcel OR parcels OR "tax parcel" OR "tax parcels" OR cadastral OR property) AND (type:"Feature Service" OR type:"Map Service")`
   const url = `https://www.arcgis.com/sharing/rest/search?q=${encodeURIComponent(q)}&bbox=${[lon - d, lat - d, lon + d, lat + d].map((v) => v.toFixed(4)).join(',')}&num=60&f=json`
@@ -222,7 +238,8 @@ function ownerField(names: string[]): string | undefined {
   return names.find((n) => OWNER_STRICT.test(n)) ?? names.find((n) => OWNER_LOOSE.test(n) && !NOT_A_NAME.test(n))
 }
 
-async function tryService(item: Item, ref: CountyRef, lat: number, lon: number): Promise<ParcelSource | null> {
+/** loose: a trusted parcel service where a bare NAME field is the owner and ADDRESS/CITY/STATE/ZIP is the mailing address */
+async function tryService(item: Item, ref: CountyRef, lat: number, lon: number, loose = false): Promise<ParcelSource | null> {
   const base = item.url!.replace(/\/+$/, '')
   let layerUrls: string[]
   if (/\/(FeatureServer|MapServer)\/\d+$/i.test(base)) layerUrls = [base]
@@ -237,15 +254,31 @@ async function tryService(item: Item, ref: CountyRef, lat: number, lon: number):
     if (meta.geometryType !== 'esriGeometryPolygon') continue
     if (meta.capabilities && !/query/i.test(meta.capabilities)) continue
     const names = (meta.fields ?? []).map((f) => f.name)
-    const owner = ownerField(names)
+    const owner = ownerField(names) ?? (loose ? names.find((n) => /^(name|name1|owner)$/i.test(n)) : undefined)
     if (!owner) continue
+    // A small box, not the exact point: the middle of the map is often a road, creek or right-of-way
+    const d = 0.003
+    const box = [lon - d, lat - d, lon + d, lat + d].map((v) => v.toFixed(6)).join(',')
     const probe = await getJson<{ features?: Array<{ attributes: Record<string, unknown> }>; error?: unknown }>(
-      `${lu}/query?geometry=${lon.toFixed(6)},${lat.toFixed(6)}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=${encodeURIComponent(owner)}&returnGeometry=false&f=json`,
+      `${lu}/query?where=1%3D1&geometry=${box}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=${encodeURIComponent(owner)}&returnGeometry=false&resultRecordCount=25&f=json`,
     )
-    const val = String(probe.features?.[0]?.attributes?.[owner] ?? '').trim()
-    if (!val || /^\d+$/.test(val) || /redact|confidential|withheld|not available|unknown/i.test(val)) continue
+    const vals = (probe.features ?? []).map((f) => String(f.attributes?.[owner] ?? '').trim())
+    const real = vals.filter((v) => v && !/^\d+$/.test(v) && !/redact|confidential|withheld|not available|unknown/i.test(v))
+    if (!real.length || real.length < vals.length / 2) continue
     const fields = guessFields(names)
     fields.owner = owner
+    if (loose) {
+      const find = (re: RegExp) => names.find((n) => re.test(n))
+      const street = find(/^(address|addr|address1|mail_?address)$/i)
+      const city = find(/^(city|mail_?city)$/i)
+      const st = find(/^(state|st|mail_?state)$/i)
+      const zip = find(/^(zip|zipcode|zip_?code|zip5|mail_?zip)$/i)
+      if (street && (city || zip)) {
+        fields.mailParts = [street, city ?? '', st ?? '', zip ?? ''].filter(Boolean)
+        delete fields.mailAddress
+        if (fields.situs === street) delete fields.situs
+      }
+    }
     const [[x0, y0], [x1, y1]] = item.extent!
     return {
       id: `found:${ref.fips}`,
@@ -264,3 +297,5 @@ async function tryService(item: Item, ref: CountyRef, lat: number, lon: number):
   }
   return null
 }
+
+if (import.meta.env.DEV) (window as unknown as { __discover: unknown }).__discover = { countyAt, discoverCounty, cachedDiscovery }
