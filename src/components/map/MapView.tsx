@@ -19,9 +19,9 @@ import ParcelLayer, { type ParcelStatus } from './ParcelLayer'
 import TerrainLayer, { type TerrainState } from './TerrainLayer'
 import OverlayLayer, { type OverlayState } from './OverlayLayer'
 import PlaceSheet, { type Place } from './PlaceSheet'
-import { UNIT_SOURCES, unitMapLabel } from '../../lib/huntUnits'
+import { UNIT_SOURCES, unitLabel, unitMapLabel } from '../../lib/huntUnits'
 import { overlaysAt } from '../../lib/overlays'
-import { ACCESS_SOURCES, PUBLIC_SOURCES, accessStyle, publicStyle } from '../../lib/publicLand'
+import { ACCESS_SOURCES, PUBLIC_SOURCES, accessStyle, describeAccess, describePublic, publicStyle } from '../../lib/publicLand'
 import ParcelSheet from './ParcelSheet'
 import { rejectDiscovered } from '../../lib/parcelDiscovery'
 import WaypointSheet from './WaypointSheet'
@@ -524,6 +524,28 @@ export default function MapView({ active }: { active: boolean }) {
 
       <ParcelSheet
         parcel={selectedParcel}
+        alsoHere={
+          selectedParcel && (settings.publicOn || settings.unitsOn)
+            ? (() => {
+                const at = overlaysAt(selectedParcel.centroid[0], selectedParcel.centroid[1])
+                const lines: string[] = []
+                for (const f of at.units) {
+                  const l = unitLabel(f)
+                  if (l && !lines.includes(l)) lines.push(l)
+                }
+                for (const f of at.public) {
+                  const d = describePublic(f)
+                  const l = `${d.name}${d.manager ? ` · ${d.manager}` : ''}`
+                  if (!lines.includes(l)) lines.push(l)
+                }
+                for (const f of at.access) {
+                  const d = describeAccess(f)
+                  if (!lines.includes(d.program)) lines.push(d.program)
+                }
+                return lines
+              })()
+            : []
+        }
         onClose={() => setSelectedParcel(null)}
         onCenter={(p) => mapRef.current?.fitBounds(L.latLngBounds(boundsOf(p.geometry)), { padding: [48, 48] })}
         onLetter={(t) => setLetter(t)}

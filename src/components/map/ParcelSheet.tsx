@@ -29,7 +29,7 @@ function keepPhone(key: string, phone: string) {
   }
 }
 
-export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSaved, onRejectSource }: { parcel: Parcel | null; onClose: () => void; onCenter: (p: Parcel) => void; onLetter: (t: LetterTarget) => void; onSaved: (waypointId: number) => void; onRejectSource?: (sourceId: string) => void }) {
+export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSaved, onRejectSource, alsoHere = [] }: { parcel: Parcel | null; alsoHere?: string[]; onClose: () => void; onCenter: (p: Parcel) => void; onLetter: (t: LetterTarget) => void; onSaved: (waypointId: number) => void; onRejectSource?: (sourceId: string) => void }) {
   const { toast } = useApp()
   const [picking, setPicking] = useState(false)
   const pins = useLiveQuery(() => liveWaypointsOfTypes(['stand', 'blind', 'access', 'food', 'other']), [])
@@ -181,6 +181,19 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
               <div className="mt-1 text-sm">{p.landUse ?? <span className="text-bone-600">–</span>}</div>
             </div>
           </div>
+
+          {alsoHere.length > 0 && (
+            <div>
+              <SectionLabel>Also here</SectionLabel>
+              <ul className="mt-1 space-y-0.5">
+                {alsoHere.map((l) => (
+                  <li key={l} className="text-sm text-bone-200">
+                    {l}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {picking && (
             <div className="rounded-2xl border border-bone-50/10 bg-pine-900/70 p-3">
