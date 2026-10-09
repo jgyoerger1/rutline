@@ -1,5 +1,7 @@
-import { ArrowCounterClockwise, Copy, Ruler } from '@phosphor-icons/react'
+import { ArrowCounterClockwise, Camera, Copy, Ruler } from '@phosphor-icons/react'
 import { useEffect, useMemo, useState } from 'react'
+import { MEASURES, fmtEighths, scoreSheet, type Sheet } from '../../lib/score'
+import RackMeasure from './RackMeasure'
 import { useApp } from '../AppContext'
 import { Button } from '../ui'
 import RackDiagram from './RackDiagram'
@@ -25,58 +27,7 @@ export default function ScoringGuide({ onBack }: { onBack: () => void }) {
 
 // ---------- the sheet ----------
 
-type Side = 'L' | 'R'
-type Measure = 'F' | 'G1' | 'G2' | 'G3' | 'G4' | 'G5' | 'H1' | 'H2' | 'H3' | 'H4'
-const MEASURES: Array<[Measure, string]> = [
-  ['F', 'Main beam'],
-  ['G1', 'Brow tine'],
-  ['G2', 'Tine 2'],
-  ['G3', 'Tine 3'],
-  ['G4', 'Tine 4'],
-  ['G5', 'Tine 5'],
-  ['H1', 'Circ. 1'],
-  ['H2', 'Circ. 2'],
-  ['H3', 'Circ. 3'],
-  ['H4', 'Circ. 4'],
-]
-type Sheet = Record<string, string>
 const KEY = 'rutline.guide.score.v1'
-
-/** "24 2/8", "24-2", "24.25", "24" → inches as a number, or null. */
-export function parseInches(s: string): number | null {
-  const t = s.trim().replace(/"/g, '')
-  if (!t) return null
-  let m = /^(\d+)(?:[ -](\d)(?:\/8)?)?$/.exec(t)
-  if (m) return Number(m[1]) + (m[2] ? Number(m[2]) / 8 : 0)
-  m = /^(\d)\/8$/.exec(t)
-  if (m) return Number(m[1]) / 8
-  const n = Number(t)
-  if (Number.isFinite(n)) return Math.round(n * 8) / 8
-  return null
-}
-
-export function fmtEighths(n: number): string {
-  const total = Math.round(n * 8)
-  const whole = Math.floor(total / 8)
-  const e = total - whole * 8
-  return `${whole} ${e}/8`
-}
-
-export function scoreSheet(sheet: Sheet) {
-  const v = (k: string) => parseInches(sheet[k] ?? '') ?? 0
-  const sideSum = (s: Side) => MEASURES.reduce((acc, [m]) => acc + v(`${s}.${m}`), 0)
-  const L = sideSum('L')
-  const R = sideSum('R')
-  const diffs = MEASURES.map(([m]) => Math.abs(v(`L.${m}`) - v(`R.${m}`)))
-  const diff = diffs.reduce((a, b) => a + b, 0)
-  const longest = Math.max(v('L.F'), v('R.F'))
-  const spread = v('spread')
-  const credit = longest > 0 ? Math.min(spread, longest) : spread
-  const abnormal = v('abnormal')
-  const gross = L + R + credit + abnormal
-  const net = gross - diff - abnormal
-  return { L, R, diffs, diff, credit, spread, abnormal, gross, net, any: L + R + spread + abnormal > 0 }
-}
 
 function ScoreSheet() {
   const { toast } = useApp()
@@ -96,6 +47,7 @@ function ScoreSheet() {
   }, [sheet])
 
   const r = useMemo(() => scoreSheet(sheet), [sheet])
+  const [measuring, setMeasuring] = useState(false)
   const set = (k: string, val: string) => setSheet((s) => ({ ...s, [k]: val }))
 
   function loadExample() {
@@ -174,7 +126,20 @@ function ScoreSheet() {
         </div>
       </div>
 
+      {measuring && (
+        <RackMeasure
+          onClose={() => setMeasuring(false)}
+          onApply={(vals) => {
+            setSheet((s) => ({ ...s, ...vals }))
+            setMeasuring(false)
+            toast(`${Object.keys(vals).length} measurements added to the sheet`)
+          }}
+        />
+      )}
       <div className="mt-4 flex flex-wrap gap-2">
+        <Button variant="primary" onClick={() => setMeasuring(true)}>
+          <Camera size={16} weight="bold" /> Measure from a photo
+        </Button>
         <Button variant="secondary" onClick={loadExample}>
           <Ruler size={16} weight="bold" /> Load the example rack
         </Button>
