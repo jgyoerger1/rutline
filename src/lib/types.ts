@@ -45,10 +45,16 @@ export interface OwnerInfo {
   mailAddress: string
   parcelId: string
   county: string
+  /** Two-letter state, when the source knew it */
+  state?: string
   situs: string
   acres: number | null
   source: string
   savedAt: number
+  /** A number the hunter found and saved */
+  phone?: string
+  /** Free note about the landowner ("answered, said call in August") */
+  contactNote?: string
 }
 
 /** Columns every synced row carries */
@@ -138,9 +144,11 @@ export interface ParcelFieldMap {
   mailName?: string
   /** One field holding the whole mailing address */
   mailAddress?: string
-  /** Or several fields joined with commas (street, city, state, zip) */
+  /** Or several fields: street part(s), then city, state, zip */
   mailParts?: string[]
   situs?: string
+  /** Or the site address split up: number, direction, name, suffix, then city last if present */
+  situsParts?: string[]
   acres?: string
   landUse?: string
   county?: string

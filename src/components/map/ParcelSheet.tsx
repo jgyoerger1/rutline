@@ -1,19 +1,41 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowSquareOut, CopySimple, CrosshairSimple, EnvelopeSimple, MapPin, Plus } from '@phosphor-icons/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { addWaypoint, liveWaypointsOfTypes, updateWaypoint } from '../../lib/db'
 import type { Parcel } from '../../lib/parcels'
 import { WAYPOINT_TYPES, type OwnerInfo } from '../../lib/types'
 import { useApp } from '../AppContext'
 import { TYPE_ICON } from '../icons'
 import { Button, SectionLabel, Sheet } from '../ui'
+import LandownerContact from './LandownerContact'
 import type { LetterTarget } from './LetterSheet'
 
-export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSaved }: { parcel: Parcel | null; onClose: () => void; onCenter: (p: Parcel) => void; onLetter: (t: LetterTarget) => void; onSaved: (waypointId: number) => void }) {
+/** Numbers found for parcels that are not pinned yet, kept on this device by parcel key */
+const PHONES = 'rutline.parcel.phones.v1'
+function phoneFor(key: string): string | undefined {
+  try {
+    return (JSON.parse(localStorage.getItem(PHONES) ?? '{}') as Record<string, string>)[key]
+  } catch {
+    return undefined
+  }
+}
+function keepPhone(key: string, phone: string) {
+  try {
+    const all = JSON.parse(localStorage.getItem(PHONES) ?? '{}') as Record<string, string>
+    all[key] = phone
+    localStorage.setItem(PHONES, JSON.stringify(all))
+  } catch {
+    /* storage blocked: the number still rides along when saved to a pin */
+  }
+}
+
+export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSaved, onRejectSource }: { parcel: Parcel | null; onClose: () => void; onCenter: (p: Parcel) => void; onLetter: (t: LetterTarget) => void; onSaved: (waypointId: number) => void; onRejectSource?: (sourceId: string) => void }) {
   const { toast } = useApp()
   const [picking, setPicking] = useState(false)
   const pins = useLiveQuery(() => liveWaypointsOfTypes(['stand', 'blind', 'access', 'food', 'other']), [])
   const p = parcel
+  const [phone, setPhone] = useState<string | undefined>(undefined)
+  useEffect(() => setPhone(p ? phoneFor(p.key) : undefined), [p?.key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const ownerInfo = (): OwnerInfo | null =>
     p
@@ -22,7 +44,9 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
           mailAddress: p.mailAddress ?? '',
           parcelId: p.parcelId,
           county: p.county,
+          state: p.state || undefined,
           situs: p.situs ?? '',
+          phone,
           acres: p.acres,
           source: p.sourceLabel,
           savedAt: Date.now(),
@@ -92,7 +116,7 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
                 <div className="mt-1 text-base font-semibold tracking-tight">{p.owner}</div>
               ) : (
                 <div className="mt-1 text-sm text-bone-400 leading-relaxed">
-                  Owner names for {p.county ? p.county + ' County' : 'this county'} are withheld from the statewide layer.
+                  Owner names for {p.county ? p.county + ' County' : 'this county'} are not in the public layer.
                   {p.recordsUrl && (
                     <>
                       {' '}
@@ -118,6 +142,23 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
                 <div className="mt-1 text-sm text-bone-600">Not published</div>
               )}
             </div>
+
+            {(p.owner || p.mailAddress) && (
+              <div className="col-span-2">
+                <LandownerContact
+                  owner={p.owner ?? p.mailName}
+                  mailAddress={p.mailAddress}
+                  state={p.state}
+                  where={[p.situs ? `at ${p.situs.split(',')[0]}` : '', p.county ? `in ${p.county} County` : ''].filter(Boolean).join(' ')}
+                  phone={phone}
+                  onPhone={(n) => {
+                    setPhone(n)
+                    keepPhone(p.key, n)
+                    toast('Number kept. Save to a pin to carry it everywhere.')
+                  }}
+                />
+              </div>
+            )}
 
             <div>
               <SectionLabel>Site address</SectionLabel>
@@ -166,7 +207,16 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
           )}
 
           <div className="text-[11.5px] text-bone-600 leading-relaxed border-t border-bone-50/8 pt-3">
-            Source: {p.sourceLabel}. County records can lag deeds by months; confirm before you knock.
+            Source: {p.sourceLabel}
+            {p.sourceKind === 'discovered' ? ', found automatically on ArcGIS Online' : ''}. County records can lag deeds by months; confirm before you knock.
+            {p.sourceKind === 'discovered' && onRejectSource && (
+              <>
+                {' '}
+                <button onClick={() => onRejectSource(p.sourceId)} className="text-bone-400 underline underline-offset-4 decoration-bone-50/20">
+                  Wrong layer? Stop using it
+                </button>
+              </>
+            )}
             {p.link && (
               <>
                 {' '}

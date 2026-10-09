@@ -8,6 +8,7 @@ import { WAYPOINT_ORDER, WAYPOINT_TYPES, type Waypoint, type WaypointType } from
 import { useApp } from '../AppContext'
 import { TYPE_ICON } from '../icons'
 import { Button, Field, Input, SectionLabel, Sheet, Textarea } from '../ui'
+import LandownerContact from './LandownerContact'
 import type { LetterTarget } from './LetterSheet'
 import PhotoGallery from './PhotoGallery'
 import WindPicker from './WindPicker'
@@ -157,6 +158,19 @@ export default function WaypointSheet({ waypoint, me, windDir, onClose, onLetter
               <div className="mt-1 text-base font-semibold tracking-tight">{w.owner.name || 'Name not published'}</div>
               {w.owner.mailAddress && <div className="text-sm text-bone-200 mt-0.5">{w.owner.mailAddress}</div>}
               <div className="text-[11.5px] text-bone-600 mt-1 font-mono tnum">{[w.owner.county ? `${w.owner.county} County` : '', w.owner.parcelId, w.owner.acres != null ? `${w.owner.acres} ac` : ''].filter(Boolean).join(' · ')}</div>
+              <div className="mt-4">
+                <LandownerContact
+                  owner={w.owner.name || null}
+                  mailAddress={w.owner.mailAddress || null}
+                  state={w.owner.state ?? ''}
+                  where={[w.owner.situs ? `at ${w.owner.situs.split(',')[0]}` : '', w.owner.county ? `in ${w.owner.county} County` : ''].filter(Boolean).join(' ')}
+                  phone={w.owner.phone}
+                  onPhone={(phone) => {
+                    void save({ owner: { ...w.owner!, phone } })
+                    toast('Number saved to the pin')
+                  }}
+                />
+              </div>
               {onLetter && (
                 <Button size="sm" variant="primary" className="mt-3" onClick={() => onLetter({ name: w.owner!.name, mailAddress: w.owner!.mailAddress, parcelId: w.owner!.parcelId, county: w.owner!.county, situs: w.owner!.situs })}>
                   <EnvelopeSimple size={15} /> Permission letter

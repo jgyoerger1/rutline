@@ -18,6 +18,7 @@ import LetterSheet, { type LetterTarget } from './LetterSheet'
 import ParcelLayer, { type ParcelStatus } from './ParcelLayer'
 import TerrainLayer, { type TerrainState } from './TerrainLayer'
 import ParcelSheet from './ParcelSheet'
+import { rejectDiscovered } from '../../lib/parcelDiscovery'
 import WaypointSheet from './WaypointSheet'
 
 const LAYERS: Record<MapLayer, { url: string; attribution: string; maxNativeZoom: number }> = {
@@ -52,6 +53,7 @@ export default function MapView({ active }: { active: boolean }) {
   const [parcelStatus, setParcelStatus] = useState<ParcelStatus>({ state: 'off', count: 0, truncated: false, sources: [] })
   const [letter, setLetter] = useState<LetterTarget | null>(null)
   const onParcelStatus = useCallback((s: ParcelStatus) => setParcelStatus(s), [])
+  const [parcelReload, setParcelReload] = useState(0)
   const { fix, error: geoError } = useWatchPosition(watch)
   const mapRef = useRef<L.Map | null>(null)
 
@@ -168,6 +170,7 @@ export default function MapView({ active }: { active: boolean }) {
             setSelectedTrail(null)
           }}
           onStatus={onParcelStatus}
+          reloadKey={parcelReload}
         />
 
         {(trails ?? []).map((t) => (
@@ -265,8 +268,8 @@ export default function MapView({ active }: { active: boolean }) {
           <span className="font-medium hidden md:inline">Lines</span>
           {settings.parcelsEnabled && (
             <span className="font-mono text-[11px] text-bone-400 tnum inline-flex items-center gap-1.5">
-              {parcelStatus.state === 'loading' && <span className="w-1.5 h-1.5 rounded-full bg-ember-400 breathe" />}
-              {parcelStatus.state === 'zoom' ? 'zoom in' : parcelStatus.state === 'ready' ? `${parcelStatus.count}${parcelStatus.truncated ? '+' : ''}` : parcelStatus.state === 'empty' ? 'none here' : parcelStatus.state === 'nosource' ? 'no source' : parcelStatus.state === 'error' ? 'offline' : ''}
+              {(parcelStatus.state === 'loading' || parcelStatus.state === 'finding') && <span className="w-1.5 h-1.5 rounded-full bg-ember-400 breathe" />}
+              {parcelStatus.state === 'zoom' ? 'zoom in' : parcelStatus.state === 'finding' ? 'finding county' : parcelStatus.state === 'ready' ? `${parcelStatus.count}${parcelStatus.truncated ? '+' : ''}` : parcelStatus.state === 'empty' ? 'none here' : parcelStatus.state === 'nosource' ? 'no source' : parcelStatus.state === 'error' ? 'offline' : ''}
             </span>
           )}
         </button>
@@ -475,6 +478,12 @@ export default function MapView({ active }: { active: boolean }) {
         onSaved={(id) => {
           setSelectedParcel(null)
           setSelectedId(id)
+        }}
+        onRejectSource={(sourceId) => {
+          rejectDiscovered(sourceId)
+          setSelectedParcel(null)
+          setParcelReload((n) => n + 1)
+          toast('Dropped that layer. Looking for another.')
         }}
       />
 

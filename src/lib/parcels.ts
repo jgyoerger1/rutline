@@ -1,12 +1,16 @@
 /**
- * Property lines. Boundaries and owner mailing addresses come from Ohio's
- * statewide parcel service (OGRIP, all 88 counties, owner names withheld).
- * Counties that publish owner names on their own ArcGIS services are layered
- * on top as adapters and replace the statewide rows for that county. Any
- * other county's ArcGIS parcel layer can be added by the user as a custom
- * source with a field mapping.
+ * Property lines, in layers of trust:
+ *  1. Statewide parcel services (STATEWIDE, see parcelRegistry.ts). Some carry
+ *     owner names, some only boundaries and mailing addresses.
+ *  2. Curated county services that publish owner names (COUNTY_SOURCES).
+ *  3. A county's own layer found automatically on ArcGIS Online when nothing
+ *     above names the owner (parcelDiscovery.ts).
+ *  4. A layer the hunter pasted in Settings.
+ * County-level rows replace statewide rows for the same county.
  */
 import type { Feature, FeatureCollection, MultiPolygon, Polygon, Position } from 'geojson'
+import { discoveredFor, sameCounty } from './parcelDiscovery'
+import { STATEWIDE_SOURCES, COUNTY_REGISTRY } from './parcelRegistry'
 import type { CustomParcelSource, ParcelFieldMap } from './types'
 
 export type BBox = [number, number, number, number] // west, south, east, north
@@ -19,17 +23,25 @@ export interface ParcelSource {
   fields: ParcelFieldMap
   /** Rows from the statewide layer with this County are replaced by this source */
   county: string | null
+  /** Two-letter state code; '' when unknown (custom layers) */
+  state: string
+  stateName?: string
   extent: BBox | null
-  kind: 'statewide' | 'county' | 'custom'
+  kind: 'statewide' | 'county' | 'discovered' | 'custom'
   recordsUrl?: string
+  /** ArcGIS Online account that published a discovered layer */
+  publisher?: string
 }
 
 export interface Parcel {
   key: string
   sourceId: string
   sourceLabel: string
+  sourceKind: ParcelSource['kind']
   parcelId: string
   county: string
+  state: string
+  stateName: string
   owner: string | null
   mailName: string | null
   mailAddress: string | null
@@ -50,55 +62,10 @@ export const MIN_PARCEL_ZOOM = 15
 export const MAX_VIEW_METRES = 3600
 const PAGE = 2000
 
-export const OHIO_STATEWIDE: ParcelSource = {
-  id: 'oh-statewide',
-  label: 'Ohio Statewide Parcels (OGRIP)',
-  shortLabel: 'Ohio statewide',
-  url: 'https://services2.arcgis.com/MlJ0G8iWUyC7jAmu/arcgis/rest/services/OhioStatewidePacels_full_view/FeatureServer/0',
-  fields: { parcelId: 'LocalParcelID', mailAddress: 'MailAddressAll', situs: 'SitusAddressAll', acres: 'LandArea', landUse: 'StateLUC', county: 'County', link: 'CAMADataSite' },
-  county: null,
-  extent: [-84.82, 38.4, -80.52, 41.98],
-  kind: 'statewide',
-  recordsUrl: 'https://ohioparcels-geohio.hub.arcgis.com/',
-}
+export const STATEWIDE: ParcelSource[] = STATEWIDE_SOURCES
+export const COUNTY_SOURCES: ParcelSource[] = COUNTY_REGISTRY
 
-export const COUNTY_SOURCES: ParcelSource[] = [
-  {
-    id: 'oh-summit',
-    label: 'Summit County Fiscal Office',
-    shortLabel: 'Summit County',
-    url: 'https://services3.arcgis.com/3Ukh5HzAdI6WZ3KP/arcgis/rest/services/TaxParcels_public/FeatureServer/0',
-    fields: { parcelId: 'PARCELID', owner: 'OWNERNME1', owner2: 'OWNERNME2', mailParts: ['PSTLADDRESS', 'PSTLCITY', 'PSTLSTATE', 'PSTLZIP5'], situs: 'SITEADDRESS', acres: 'STATEDAREA', landUse: 'USEDSCRP' },
-    county: 'Summit',
-    extent: [-81.7, 40.98, -81.38, 41.36],
-    kind: 'county',
-    recordsUrl: 'https://fiscaloffice.summitoh.net/',
-  },
-  {
-    id: 'oh-stark',
-    label: 'Stark County Auditor',
-    shortLabel: 'Stark County',
-    url: 'https://scgisa.starkcountyohio.gov/arcgis/rest/services/Auditor/StarkCountyParcels/FeatureServer/0',
-    fields: { parcelId: 'PIN', owner: 'OWNER', mailName: 'MAILING_NAME', mailAddress: 'MAILING_ADDRESS', situs: 'SITE_ADDRESS', acres: 'ACRES', landUse: 'LAND_USE_DESCRIPTION' },
-    county: 'Stark',
-    extent: [-81.66, 40.63, -81.07, 41.0],
-    kind: 'county',
-    recordsUrl: 'https://www.starkcountyohio.gov/auditor',
-  },
-  {
-    id: 'oh-geauga',
-    label: 'Geauga County Auditor',
-    shortLabel: 'Geauga County',
-    url: 'https://gcgis.geauga.oh.gov/parcel/rest/services/AzureParcels/Parcels/FeatureServer/0',
-    fields: { parcelId: 'PARCEL_ID', owner: 'Oname1', owner2: 'Oname2', mailName: 'MailName1', mailParts: ['MailStreet', 'MailCitySt', 'MailZip'], situs: 'LocDesc', acres: 'ACRES', landUse: 'PropClass' },
-    county: 'Geauga',
-    extent: [-81.4, 41.34, -80.99, 41.73],
-    kind: 'county',
-    recordsUrl: 'https://auditor.geauga.oh.gov/',
-  },
-]
-
-/** Where to look a parcel up by hand when the service withholds the name */
+/** Where to look a parcel up by hand when the service withholds the name (Ohio counties) */
 const COUNTY_RECORDS: Record<string, string> = {
   Portage: 'https://beacon.schneidercorp.com/Application.aspx?App=PortageCountyOH',
   Cuyahoga: 'https://myplace.cuyahogacounty.gov/',
@@ -121,6 +88,7 @@ export function customToSource(c: CustomParcelSource): ParcelSource {
     url: c.url.replace(/\/query.*$/, '').replace(/\/+$/, ''),
     fields: c.fields,
     county: c.county.trim() || null,
+    state: '',
     extent: c.extent,
     kind: 'custom',
   }
@@ -130,7 +98,7 @@ export function bboxIntersects(a: BBox, b: BBox): boolean {
   return a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1]
 }
 
-/** Sources worth asking for this view: statewide if in Ohio, plus adapters and the custom layer that overlap. */
+/** Sources worth asking for this view: the custom layer, county-level layers, then statewide layers that overlap. */
 export function sourcesFor(bbox: BBox, custom: CustomParcelSource | null): ParcelSource[] {
   const out: ParcelSource[] = []
   if (custom?.url) {
@@ -138,8 +106,14 @@ export function sourcesFor(bbox: BBox, custom: CustomParcelSource | null): Parce
     if (!c.extent || bboxIntersects(bbox, c.extent)) out.push(c)
   }
   for (const s of COUNTY_SOURCES) if (s.extent && bboxIntersects(bbox, s.extent)) out.push(s)
-  if (OHIO_STATEWIDE.extent && bboxIntersects(bbox, OHIO_STATEWIDE.extent)) out.push(OHIO_STATEWIDE)
+  for (const s of discoveredFor(bbox)) if (!out.some((o) => o.url === s.url)) out.push(s)
+  for (const s of STATEWIDE) if (s.extent && bboxIntersects(bbox, s.extent)) out.push(s)
   return out
+}
+
+/** True when some source in the list names owners for this county. */
+export function namesOwnersFor(sources: ParcelSource[], state: string, county: string): boolean {
+  return sources.some((s) => !!s.fields.owner && (s.kind === 'custom' || (s.state === state && (s.kind === 'statewide' || sameCounty(s.county, county)))))
 }
 
 export interface ParcelResult {
@@ -173,26 +147,32 @@ export async function fetchParcelsFor(bbox: BBox, custom: CustomParcelSource | n
     else errors.push(`${sources[i].shortLabel}: ${r.reason instanceof Error ? r.reason.message : 'failed'}`)
   })
 
-  // Adapters and the custom layer win over statewide rows for their county
+  // County-level layers (curated, discovered, custom) win over statewide rows for their county.
+  // Where a statewide layer carries no county name, drop statewide rows that sit on a county-level parcel.
   const replaced = new Set<string>()
   const parcels: Parcel[] = []
+  const grid = new Set<string>()
+  const cell = ([lat, lon]: [number, number]) => `${Math.round(lat / 0.0004)},${Math.round(lon / 0.0004)}`
   let truncated = false
   for (const s of sources) {
     const got = bySource.get(s.id)
     if (!got) continue
     truncated ||= got.truncated
-    if (s.kind !== 'statewide') {
-      parcels.push(...got.parcels)
-      if (s.county) replaced.add(s.county.toLowerCase())
-      else if (s.kind === 'custom' && s.extent) replaced.add(`extent:${s.id}`)
+    if (s.kind === 'statewide') continue
+    for (const p of got.parcels) {
+      if (parcels.some((q) => q.key === p.key)) continue
+      parcels.push(p)
+      grid.add(cell(p.centroid))
     }
+    if (s.county) replaced.add(`${s.state}|${s.county.toLowerCase()}`)
   }
-  const sw = bySource.get(OHIO_STATEWIDE.id)
-  if (sw) {
-    const customSrc = sources.find((s) => s.kind === 'custom')
-    for (const p of sw.parcels) {
-      if (replaced.has(p.county.toLowerCase())) continue
-      if (customSrc && !customSrc.county && customSrc.extent && pointIn(customSrc.extent, p.centroid)) continue
+  for (const s of sources) {
+    if (s.kind !== 'statewide') continue
+    const got = bySource.get(s.id)
+    if (!got) continue
+    for (const p of got.parcels) {
+      if (p.county && replaced.has(`${p.state}|${p.county.toLowerCase()}`)) continue
+      if (grid.size && grid.has(cell(p.centroid))) continue
       parcels.push(p)
     }
   }
@@ -218,12 +198,8 @@ export async function fetchParcelsFor(bbox: BBox, custom: CustomParcelSource | n
   return result
 }
 
-function pointIn(b: BBox, [lat, lon]: [number, number]): boolean {
-  return lon >= b[0] && lon <= b[2] && lat >= b[1] && lat <= b[3]
-}
-
 function outFields(f: ParcelFieldMap): string[] {
-  const list = [f.parcelId, f.owner, f.owner2, f.mailName, f.mailAddress, f.situs, f.acres, f.landUse, f.county, f.link, ...(f.mailParts ?? [])]
+  const list = [f.parcelId, f.owner, f.owner2, f.mailName, f.mailAddress, f.situs, f.acres, f.landUse, f.county, f.link, ...(f.mailParts ?? []), ...(f.situsParts ?? [])]
   return Array.from(new Set(list.filter((x): x is string => !!x)))
 }
 
@@ -293,16 +269,31 @@ const str = (v: unknown): string | null => {
   return s && s !== 'null' ? s : null
 }
 
+/** Street parts..., city, state, zip. The last three are always city, state and zip when four or more are listed. */
+function joinAddress(values: Array<string | null>): string | null {
+  if (values.length >= 4) {
+    const street = values.slice(0, -3).filter(Boolean).join(' ')
+    const [city, st, zip] = values.slice(-3)
+    const tail = [st, zip].filter(Boolean).join(' ')
+    return [street, city, tail].filter(Boolean).join(', ') || null
+  }
+  return values.filter(Boolean).join(', ') || null
+}
+
 function normalize(source: ParcelSource, p: Record<string, unknown>, geometry: Polygon | MultiPolygon): Parcel {
   const f = source.fields
   const get = (k?: string) => (k ? str(p[k]) : null)
-  const owner = [get(f.owner), get(f.owner2)].filter(Boolean).join(' & ') || null
+  const o1 = get(f.owner)
+  const o2 = get(f.owner2)
+  const owner = [o1, o2 && o2 !== o1 ? o2 : null].filter(Boolean).join(' & ') || null
   let mail = get(f.mailAddress)
-  if (!mail && f.mailParts?.length) {
-    const parts = f.mailParts.map((k) => str(p[k])).filter((x): x is string => !!x)
-    // street, city, state zip
-    if (parts.length >= 4) mail = `${parts[0]}, ${parts[1]}, ${parts[2]} ${parts.slice(3).join(' ')}`
-    else mail = parts.join(', ') || null
+  if (!mail && f.mailParts?.length) mail = joinAddress(f.mailParts.map((k) => str(p[k])))
+  let situs = get(f.situs)
+  if (!situs && f.situsParts?.length) {
+    const vals = f.situsParts.map((k) => str(p[k]))
+    const last = f.situsParts[f.situsParts.length - 1]
+    if (/city/i.test(last) && f.situsParts.length > 1) situs = [vals.slice(0, -1).filter(Boolean).join(' '), vals[vals.length - 1]].filter(Boolean).join(', ') || null
+    else situs = vals.filter(Boolean).join(' ') || null
   }
   const county = get(f.county) ?? source.county ?? ''
   const parcelId = get(f.parcelId) ?? ''
@@ -311,20 +302,25 @@ function normalize(source: ParcelSource, p: Record<string, unknown>, geometry: P
   if (acres == null || !Number.isFinite(acres) || acres <= 0) acres = round2(areaAcres(geometry))
   const centroid = centroidOf(geometry)
   const link = get(f.link)
+  const stateName = source.stateName ?? STATE_NAMES[source.state] ?? ''
+  const ohioCurated = source.state === 'OH' ? COUNTY_RECORDS[county] : undefined
   return {
     key: `${source.id}:${parcelId || centroid.map((v) => v.toFixed(5)).join(',')}`,
     sourceId: source.id,
     sourceLabel: source.label,
+    sourceKind: source.kind,
     parcelId,
     county,
+    state: source.state,
+    stateName,
     owner,
     mailName: get(f.mailName),
     mailAddress: mail,
-    situs: get(f.situs),
+    situs,
     acres,
     landUse: get(f.landUse),
     link: link && /^https?:\/\//i.test(link) ? link : null,
-    recordsUrl: source.kind === 'statewide' ? COUNTY_RECORDS[county] ?? (county ? auditorSearchUrl(county) : null) : source.recordsUrl ?? COUNTY_RECORDS[county] ?? null,
+    recordsUrl: source.kind === 'statewide' ? ohioCurated ?? (county ? auditorSearchUrl(county, stateName) : null) : source.recordsUrl ?? ohioCurated ?? null,
     units: 1,
     geometry,
     centroid,
@@ -333,9 +329,17 @@ function normalize(source: ParcelSource, p: Record<string, unknown>, geometry: P
 
 const round2 = (v: number) => Math.round(v * 100) / 100
 
-/** No curated link for this county: send the hunter to a search for its auditor property lookup */
-function auditorSearchUrl(county: string): string {
-  return 'https://www.google.com/search?q=' + encodeURIComponent(county + ' County Ohio auditor property search')
+/** No curated link for this county: send the hunter to a search for its property lookup */
+export function auditorSearchUrl(county: string, stateName: string): string {
+  return 'https://www.google.com/search?q=' + encodeURIComponent(`${county} County ${stateName} property records owner search`)
+}
+
+export const STATE_NAMES: Record<string, string> = {
+  AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', FL: 'Florida', GA: 'Georgia',
+  HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland',
+  MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey',
+  NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island', SC: 'South Carolina',
+  SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
 }
 
 /** Esri rings to GeoJSON. Esri outer rings run clockwise, holes counter-clockwise. */
@@ -469,20 +473,33 @@ export function guessFields(names: string[]): ParcelFieldMap {
     return undefined
   }
   const g: ParcelFieldMap = {}
+  const notName = /addr|street|city|state|zip|mail|type|code|count|id$|flag|pct|percent|date/i
   g.parcelId = pick([/^(parcel_?id|pin|parcelno|parcel_?no|apn|prop_?id|lowparcelid|parcel_?number)$/i, /parcel.*id/i, /^pin/i])
-  g.owner = pick([/^(owner|owner1|ownernme1|oname1|owner_?name|ownername1?|own1|deeded_?owner)$/i, /owner.*(name|nme)?1?$/i])
-  g.owner2 = pick([/^(owner2|ownernme2|oname2|ownername2|own2)$/i])
+  g.owner =
+    pick([/^(deeded_?owner|owner|owner_?1|ownernme1|oname1|owner_?name1?|ownername1?|own1|own_?name1?|ownname|taxpayer(_?name)?1?|grantee)$/i]) ??
+    names.find((n) => /owner_?(name|nme)?_?1?$/i.test(n) && !notName.test(n))
+  g.owner2 = pick([/^(owner_?2|ownernme2|oname2|owner_?name_?2|ownername2|own2|own_?name_?2)$/i])
   g.mailName = pick([/mail(ing)?_?name1?$/i])
-  g.mailAddress = pick([/^mail(ing)?_?(address|addr)(all|1)?$/i, /mail.*address.*all/i])
+  g.mailAddress = pick([/^mail(ing)?_?(address|addr)(all|1)?$/i, /mail.*address.*all/i, /^(owner|own|pstl|taxp?)_?(full_?)?(mail_?)?address$/i])
   if (!g.mailAddress) {
-    const street = pick([/mail.*(street|addr1|add1|line1)/i, /^owner_?add(r)?1$/i])
-    const city = pick([/mail.*city/i, /^owner_?city$/i])
-    const state = pick([/mail.*(state|_st)$/i, /^owner_?stat(e)?$/i])
-    const zip = pick([/mail.*zip/i, /^owner_?zip/i])
-    const parts = [street, city, state, zip].filter((x): x is string => !!x)
-    if (parts.length >= 2) g.mailParts = parts
+    // Street may be one field or number + direction + name + suffix; then city, state, zip
+    const pre = '(mail(ing)?|pstl|own(er)?|taxp(ayer)?)_?'
+    const one = pick([new RegExp(`^${pre}(street|addr(ess)?_?1?|add1|line_?1|str(eet)?_?addr)$`, 'i'), /mail.*(street|addr1|add1|line1)/i])
+    const split = ['(street_?)?(number|no|num)', '(street_?)?dir(ection)?', 'street_?name', '(street_?)?suffix'].map((s) => pick([new RegExp(`^${pre}${s}$`, 'i')]))
+    const street = one ? [one] : split.filter((x): x is string => !!x)
+    const city = pick([new RegExp(`^${pre}city$`, 'i'), /mail.*city/i])
+    const state = pick([new RegExp(`^${pre}(state|st)$`, 'i'), /mail.*(state|_st)$/i])
+    const zip = pick([new RegExp(`^${pre}zip(code|5)?$`, 'i'), /mail.*zip/i])
+    if (street.length && (city || zip)) g.mailParts = [...street, city ?? '', state ?? '', zip ?? ''].filter((x, i, a) => x || i >= a.length - 3)
+    if (g.mailParts?.some((x) => !x)) g.mailParts = g.mailParts.filter(Boolean)
   }
-  g.situs = pick([/^(situs|site_?address|siteaddress|situsaddressall|prop(erty)?_?address|location_?a|locdesc|address)$/i, /situs/i, /site.*addr/i])
+  g.situs = pick([/^(situs|site_?address|siteaddress|situsaddressall|situs_?address|prop(erty)?_?address|location_?a|locdesc|address|full_?address|loc_?address)$/i, /situs.*addr/i, /site.*addr/i])
+  if (!g.situs) {
+    const pre = '(m?loc|site|situs|prop(erty)?)_?'
+    const parts = ['(str(eet)?_?)?(no|num|number)', '(str(eet)?_?)?dir', 'str(eet)?_?name', '(str(eet)?_?)?suffix', 'city'].map((s) => pick([new RegExp(`^${pre}${s}$`, 'i')]))
+    const got = parts.filter((x): x is string => !!x)
+    if (got.length >= 2) g.situsParts = got
+  }
   g.acres = pick([/^(acres|acre|acreage|gis_?acres|calc_?acres|land_?area|statedarea|deeded_?acres)$/i, /acre/i])
   g.landUse = pick([/^(land_?use_?desc(ription)?|landuse|luc|stateluc|usedscrp|propclass|class_?desc|use_?code)$/i, /land.?use/i, /class/i])
   g.county = pick([/^county(_?name)?$/i])
