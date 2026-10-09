@@ -24,7 +24,7 @@ const google = (q: string) => `https://www.google.com/search?q=${encodeURICompon
 
 /** What a tap landed on: public land, a walk-in access tract, a hunt unit. */
 export default function PlaceSheet({ place, onClose }: { place: Place | null; onClose: () => void }) {
-  const pub = dedupe((place?.public ?? []).map(describePublic), (p) => `${p.name}|${p.manager}`)
+  const pub = dedupe((place?.public ?? []).map(describePublic), (p) => `${p.name}|${p.manager}`).sort((a, b) => (b.easement ? 0 : 1) - (a.easement ? 0 : 1))
   const acc = dedupe((place?.access ?? []).map(describeAccess), (a) => `${a.program}|${a.name}`)
   const units = dedupe(
     (place?.units ?? []).map((f) => ({ label: unitLabel(f), src: unitSource(f.sourceId), props: f.props })).filter((u) => u.label && u.src),
@@ -66,6 +66,24 @@ export default function PlaceSheet({ place, onClose }: { place: Place | null; on
               <div className="min-w-0 space-y-1">
                 <div className="text-base font-semibold tracking-tight">{a.program}</div>
                 {a.name && <div className="text-sm text-bone-400">{a.name}</div>}
+                {a.details.length > 0 && (
+                  <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
+                    {a.details.map((d) => (
+                      <div key={d.label} className="contents">
+                        <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-bone-600 pt-[2px]">{d.label}</dt>
+                        <dd className="text-bone-200 leading-snug min-w-0 break-words">
+                          {d.link ? (
+                            <a href={d.value} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline underline-offset-4 decoration-bone-50/30">
+                              Open <ArrowSquareOut size={12} />
+                            </a>
+                          ) : (
+                            d.value
+                          )}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
                 <p className="text-[12.5px] text-bone-600 leading-relaxed">Private land opened to hunting by a state program. Seasons, sign-in and method rules are the program’s.</p>
                 {a.infoUrl && (
                   <a href={a.infoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[13px] text-bone-50 underline underline-offset-4 decoration-bone-50/30">

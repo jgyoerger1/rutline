@@ -21,7 +21,7 @@ import OverlayLayer, { type OverlayState } from './OverlayLayer'
 import PlaceSheet, { type Place } from './PlaceSheet'
 import { UNIT_SOURCES, unitLabel, unitMapLabel } from '../../lib/huntUnits'
 import { overlaysAt } from '../../lib/overlays'
-import { ACCESS_SOURCES, PUBLIC_SOURCES, accessStyle, describeAccess, describePublic, publicStyle } from '../../lib/publicLand'
+import { ACCESS_SOURCES, PUBLIC_LEGEND, PUBLIC_SOURCES, accessStyle, describeAccess, describePublic, publicStyle } from '../../lib/publicLand'
 import ParcelSheet from './ParcelSheet'
 import { rejectDiscovered } from '../../lib/parcelDiscovery'
 import WaypointSheet from './WaypointSheet'
@@ -357,6 +357,22 @@ export default function MapView({ active }: { active: boolean }) {
           <Segmented id="layer" value={settings.mapLayer} onChange={(mapLayer) => setSettings({ mapLayer })} options={[{ value: 'satellite', label: 'Sat' }, { value: 'topo', label: 'Topo' }, { value: 'streets', label: 'Streets' }]} className="glass" />
         </div>
       </div>
+      {settings.publicOn && (
+        <div className="self-start max-w-full pointer-events-auto glass rounded-xl px-3 py-1.5 flex items-center gap-x-3 text-[11px] text-bone-200 overflow-x-auto no-bar whitespace-nowrap">
+          {PUBLIC_LEGEND.map((l) => (
+            <span key={l.label} className="inline-flex items-center gap-1.5 shrink-0">
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: l.tone, opacity: 0.85 }} />
+              <span className="md:hidden">{l.short}</span>
+              <span className="hidden md:inline">{l.label}</span>
+            </span>
+          ))}
+          <span className="inline-flex items-center gap-1.5 shrink-0">
+            <span className="w-2.5 h-2.5 rounded-sm border border-dashed border-ember-300" />
+            Walk-in
+          </span>
+          <span className="hidden md:inline text-bone-600">Tap an area for access rules</span>
+        </div>
+      )}
       {typesPresent.length > 1 && (
         <div className="overflow-x-auto no-bar -mx-3 px-3">
           <div className="flex gap-1.5 min-w-max pointer-events-auto pr-4">

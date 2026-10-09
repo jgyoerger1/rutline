@@ -45,39 +45,83 @@ export interface OverlayFeature {
 const cache = new Map<string, { at: number; features: OverlayFeature[]; truncated: boolean }>()
 const TTL = 15 * 60 * 1000
 
+/**
+ * Ask which features meet the view (IDs only, cheap), then fetch geometry only
+ * for features not already held at this level of detail. Big public units
+ * (a national forest is one 1.5-million-acre polygon) come back whole however
+ * small the view, so each is downloaded once per detail band, not per pan.
+ */
+const BANDS = [0.004, 0.0012, 0.0004, 0.00015]
+const held = new Map<string, Map<string, OverlayFeature>>()
+const oidField = new Map<string, string>()
+const HOLD = 4000
+
+function bandFor(degPerPx: number): number {
+  for (const b of BANDS) if (b <= degPerPx * 1.6) return b
+  return BANDS[BANDS.length - 1]
+}
+
 export async function queryOverlay(src: OverlaySource, view: BBox, pxWide: number, signal: AbortSignal): Promise<{ features: OverlayFeature[]; truncated: boolean }> {
-  // Simplify to roughly one screen pixel; quantize the view so small pans reuse the cache
   const deg = (view[2] - view[0]) / Math.max(256, pxWide)
+  const offset = bandFor(deg)
   const q = Math.max(deg * 64, 0.0005)
   const qb: BBox = [Math.floor(view[0] / q) * q, Math.floor(view[1] / q) * q, Math.ceil(view[2] / q) * q, Math.ceil(view[3] / q) * q]
-  const offset = Number((deg * 1.2).toPrecision(2))
   const key = `${src.id}|${qb.map((v) => v.toFixed(4)).join(',')}|${offset}`
   const hit = cache.get(key)
   if (hit && Date.now() - hit.at < TTL) return hit
 
-  const params = new URLSearchParams({
+  const geo = {
     where: src.where ?? '1=1',
     geometry: qb.map((v) => v.toFixed(5)).join(','),
     geometryType: 'esriGeometryEnvelope',
     inSR: '4326',
     spatialRel: 'esriSpatialRelIntersects',
-    outFields: src.outFields.join(',') || '*',
-    returnGeometry: 'true',
-    outSR: '4326',
-    maxAllowableOffset: String(offset),
-    geometryPrecision: offset < 0.0001 ? '6' : '5',
-    resultRecordCount: String(src.maxRecordCount),
-  })
-  const features: OverlayFeature[] = []
-  let truncated = false
-  // Up to three pages; national forests in a wide view can run long
-  for (let page = 0; page < 3; page++) {
-    if (page) params.set('resultOffset', String(page * src.maxRecordCount))
-    const r = await fetchPage(src, params, signal)
-    for (const f of r.features) features.push(toFeature(src, f, features.length))
-    truncated = r.exceeded
-    if (!r.exceeded) break
   }
+  // 1. Which features are here
+  const idRes = await postJson<{ objectIdFieldName?: string; objectIds?: number[] | null; error?: { message?: string } }>(`${src.url}/query`, { ...geo, returnIdsOnly: 'true', f: 'json' }, signal)
+  if (idRes.error) throw new Error(idRes.error.message || 'query rejected')
+  const idName = idRes.objectIdFieldName ?? oidField.get(src.id) ?? 'OBJECTID'
+  oidField.set(src.id, idName)
+  const ids = (idRes.objectIds ?? []).slice(0, src.maxRecordCount * 4)
+  const truncated = (idRes.objectIds?.length ?? 0) > ids.length
+
+  // 2. Geometry for the ones we do not hold at this detail
+  const bucketKey = `${src.id}|${offset}`
+  let bucket = held.get(bucketKey)
+  if (!bucket) {
+    bucket = new Map()
+    held.set(bucketKey, bucket)
+  }
+  const missing = ids.filter((id) => !bucket!.has(String(id)))
+  const outFields = Array.from(new Set([idName, ...src.outFields])).join(',')
+  for (let i = 0; i < missing.length; i += src.maxRecordCount) {
+    const chunk = missing.slice(i, i + src.maxRecordCount)
+    const params = {
+      objectIds: chunk.join(','),
+      outFields,
+      returnGeometry: 'true',
+      outSR: '4326',
+      maxAllowableOffset: String(offset),
+      geometryPrecision: offset < 0.0004 ? '6' : '5',
+    }
+    const raw = await fetchByIds(src, params, signal)
+    for (const r of raw) {
+      const oid = String(r.id ?? r.properties[idName] ?? '')
+      if (!oid || !r.geometry) continue
+      const g = r.geometry
+      bucket.set(oid, { key: `${src.id}:${oid}`, sourceId: src.id, kind: src.kind, props: r.properties, geometry: g, bbox: bboxOf(g) })
+    }
+  }
+  // Keep memory bounded: drop the oldest held features
+  if (bucket.size > HOLD) {
+    const drop = bucket.size - HOLD
+    let n = 0
+    for (const k of bucket.keys()) {
+      if (n++ >= drop) break
+      bucket.delete(k)
+    }
+  }
+  const features = ids.map((id) => bucket!.get(String(id))).filter((x): x is OverlayFeature => !!x)
   const result = { at: Date.now(), features, truncated }
   if (!signal.aborted) {
     cache.set(key, result)
@@ -86,31 +130,31 @@ export async function queryOverlay(src: OverlaySource, view: BBox, pxWide: numbe
   return result
 }
 
+/** Form-encoded POST: long ID lists fit, and no CORS preflight is needed. */
+async function postJson<T>(url: string, params: Record<string, string>, signal: AbortSignal): Promise<T> {
+  const res = await fetch(url, { method: 'POST', body: new URLSearchParams(params), signal })
+  if (!res.ok) throw new Error(`server answered ${res.status}`)
+  return (await res.json()) as T
+}
+
+async function fetchByIds(src: OverlaySource, params: Record<string, string>, signal: AbortSignal): Promise<Array<RawFeature & { id?: string | number }>> {
+  const res = await fetch(`${src.url}/query`, { method: 'POST', body: new URLSearchParams({ ...params, f: 'geojson' }), signal })
+  let body: { type?: string; features?: Array<RawFeature & { id?: string | number }>; error?: { message?: string } } = {}
+  try {
+    body = await res.json()
+  } catch {
+    body = {}
+  }
+  if (res.ok && !body.error && body.type === 'FeatureCollection') return (body.features ?? []).filter((f) => f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon'))
+  // Older servers: Esri JSON
+  const ej = await postJson<{ features?: Array<{ attributes: Record<string, unknown>; geometry?: { rings?: Position[][] } }>; error?: { message?: string } }>(`${src.url}/query`, { ...params, f: 'json' }, signal)
+  if (ej.error) throw new Error(ej.error.message || 'query rejected')
+  return (ej.features ?? []).filter((f) => f.geometry?.rings?.length).map((f) => ({ properties: f.attributes, geometry: ringsToGeoJSON(f.geometry!.rings!) }))
+}
+
 interface RawFeature {
   properties: Record<string, unknown>
   geometry: Polygon | MultiPolygon | null
-}
-
-async function fetchPage(src: OverlaySource, params: URLSearchParams, signal: AbortSignal): Promise<{ features: RawFeature[]; exceeded: boolean }> {
-  let res = await fetch(`${src.url}/query?${params.toString()}&f=geojson`, { signal })
-  const body = (await res.json()) as { type?: string; features?: RawFeature[]; exceededTransferLimit?: boolean; properties?: { exceededTransferLimit?: boolean }; error?: { message?: string } }
-  if (res.ok && !body.error && body.type === 'FeatureCollection') {
-    return { features: (body.features ?? []).filter((f) => f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon')), exceeded: !!(body.exceededTransferLimit || body.properties?.exceededTransferLimit) }
-  }
-  // Older servers: Esri JSON
-  res = await fetch(`${src.url}/query?${params.toString()}&f=json`, { signal })
-  const ej = (await res.json()) as { features?: Array<{ attributes: Record<string, unknown>; geometry?: { rings?: Position[][] } }>; exceededTransferLimit?: boolean; error?: { message?: string } }
-  if (ej.error) throw new Error(ej.error.message || 'query rejected')
-  return {
-    features: (ej.features ?? []).filter((f) => f.geometry?.rings?.length).map((f) => ({ properties: f.attributes, geometry: ringsToGeoJSON(f.geometry!.rings!) })),
-    exceeded: !!ej.exceededTransferLimit,
-  }
-}
-
-function toFeature(src: OverlaySource, f: RawFeature, i: number): OverlayFeature {
-  const g = f.geometry as Polygon | MultiPolygon
-  const id = src.idField ? f.properties[src.idField] : f.properties.OBJECTID ?? f.properties.objectid ?? f.properties.FID ?? i
-  return { key: `${src.id}:${String(id)}:${i}`, sourceId: src.id, kind: src.kind, props: f.properties, geometry: g, bbox: bboxOf(g) }
 }
 
 export function bboxOf(g: Polygon | MultiPolygon): BBox {
@@ -209,3 +253,4 @@ export function overlaysAt(lat: number, lon: number): Record<OverlayKind, Overla
 export type { Feature }
 
 if (import.meta.env.DEV) (window as unknown as { __overlaysAt: typeof overlaysAt }).__overlaysAt = overlaysAt
+if (import.meta.env.DEV) (window as unknown as { __overlaysLoaded: unknown }).__overlaysLoaded = loaded
