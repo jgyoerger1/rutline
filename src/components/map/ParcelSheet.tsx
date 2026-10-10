@@ -222,7 +222,7 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
 
           <div className="text-[11.5px] text-bone-600 leading-relaxed border-t border-bone-50/8 pt-3">
             Source: {p.sourceLabel}
-            {p.sourceKind === 'discovered' ? ', found automatically on ArcGIS Online' : ''}. County records can lag deeds by months; confirm before you knock.
+            {p.sourceKind === 'discovered' ? ', found automatically on ArcGIS Online' : ''}. Lines are approximate and not a survey, and county records can lag deeds by months. Confirm the boundary and the owner before you hunt or knock.
             {p.sourceKind === 'discovered' && onRejectSource && (
               <>
                 {' '}

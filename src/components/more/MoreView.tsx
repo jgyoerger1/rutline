@@ -171,7 +171,7 @@ export default function MoreView() {
             </div>
           </Section>
 
-          <Section title="About" body="Rutline pulls weather from Open-Meteo, imagery from Esri, topo from USGS and streets from OpenStreetMap. Nothing you pin leaves your phone.">
+          <Section title="About" body="Rutline pulls weather from Open-Meteo, imagery from Esri and topo from USGS. Property lines, public land and hunting units come from state and county GIS servers. Your pins stay on your phone unless you sign in; then they sync to your account and to the camps you share them with.">
             <div className="text-[12px] text-bone-600 font-mono">v{__APP_VERSION__}</div>
           </Section>
         </div>

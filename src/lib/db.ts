@@ -387,3 +387,8 @@ export async function clearLocal(): Promise<void> {
   }
   changed()
 }
+
+// Dev-only hook so scripts (store screenshots, tests) can seed data without the UI
+if (import.meta.env.DEV) {
+  ;(window as unknown as { __rutline?: unknown }).__rutline = { db, addWaypoint, addTrail }
+}

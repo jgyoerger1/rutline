@@ -4,11 +4,17 @@ The native app is the same web code inside a Capacitor shell. GitHub's macOS run
 
 ## What is already in the repo
 
-- `capacitor.config.ts`, `ios/` (the Xcode project), `resources/` (icon and splash sources) and `scripts/build-native.mjs`.
-- `.github/workflows/ios.yml`: the **compile** job runs on every push and proves the app builds (unsigned, no Apple account needed). The **testflight** job is manual and needs the secrets below.
+- `capacitor.config.ts`, `ios/` (the Xcode project, iPhone only), `resources/` (icon and splash sources) and `scripts/build-native.mjs`.
+- `.github/workflows/ios.yml`: the **compile** job runs on every push and proves the app builds (unsigned, no Apple account needed). It runs on `macos-26` runners because App Store Connect rejects uploads built with anything older than Xcode 26, and the first step fails loudly if the runner's Xcode is too old. The **testflight** job is manual and needs the secrets below.
 - `fastlane/Fastfile`: archives with your distribution certificate and uploads to TestFlight.
-- `public/privacy.html`: the privacy policy App Review asks for, live at https://jordanyoerger.com/rutline/privacy.html.
+- `public/privacy.html`, live at https://jordanyoerger.com/rutline/privacy.html, and `public/support.html`, live at https://jordanyoerger.com/rutline/support.html. App Review asks for both links.
 - In-app account deletion (Settings → Account → Danger zone), which Apple requires for apps with sign-in.
+- `store/screenshots/`: App Store screenshots at 1320 × 2868 (the 6.9-inch iPhone size, the only one Apple requires). Regenerate with `node tools/store-shots.mjs` while `npm run dev` is running.
+
+## Before the first build
+
+1. **Esri imagery key.** Esri's terms require an API key for imagery inside an app. Create a free ArcGIS Location Platform account at https://location.arcgis.com, make an API key with the **Basemaps** privilege, and add it as a repo *variable* (not secret) named `VITE_ESRI_API_KEY` under Settings → Secrets and variables → Actions → Variables. Both workflows read it; without it the app falls back to the open endpoint, which is fine for development only. The free tier is 2 million tiles a month.
+2. **Supabase sign-up emails.** Supabase's built-in mailer sends only a few emails an hour, so with email confirmation on, a launch-day rush leaves people stuck at "check your email". Either turn confirmation off (Authentication → Sign In / Providers → Email → Confirm email) or connect a custom SMTP provider first (Authentication → Emails → SMTP settings; Resend and Brevo have free tiers).
 
 ## 1. Apple Developer Program
 
@@ -18,7 +24,7 @@ Enroll at https://developer.apple.com/programs/enroll/ ($99/year, individual is 
 
 1. https://developer.apple.com/account/resources/identifiers → **+** → App IDs → App.
 2. Description `Rutline`, Bundle ID **Explicit**: `com.jordanyoerger.rutline`. No capabilities needed yet. Register.
-3. https://appstoreconnect.apple.com → My Apps → **+** → New App: iOS, name `Rutline`, primary language English, bundle ID the one above, SKU `rutline`. Create.
+3. https://appstoreconnect.apple.com → My Apps → **+** → New App: iOS, name `Rutline`, primary language English, bundle ID the one above, SKU `rutline`. Create. If the name is taken, try `Rutline: Deer Hunting Maps`.
 
 ## 3. Distribution certificate (made on Windows with OpenSSL)
 
@@ -66,9 +72,31 @@ Repo → Settings → Secrets and variables → Actions → **Secrets** → New 
 
 Actions → **iOS app** → Run workflow → tick **Upload to TestFlight** → Run. Fifteen to twenty minutes later the build appears in App Store Connect → TestFlight. Add yourself as an internal tester, install the TestFlight app on your phone, and you are running the native build. Friends can be added as testers by email (up to 100 internal testers, no review needed).
 
+Test on the phone before submitting: location, the blood camera, a photo on a pin, sign-in and sync, property lines, and the rack tracer.
+
 ## 8. App Review
 
-In App Store Connect fill in the listing: screenshots (6.7" and 6.5" iPhone), description, keywords, support URL (the GitHub issues page works), privacy policy URL (`https://jordanyoerger.com/rutline/privacy.html`), and the App Privacy questionnaire (location, photos, email and user content, all "linked to the user" and used only for app functionality). Age rating: no restricted content; hunting is fine. Pick the TestFlight build, submit. First reviews take one to three days. Two things reviewers check for sign-in apps: account deletion inside the app (done) and, if you ever add Google sign-in, Sign in with Apple alongside it.
+In App Store Connect fill in the listing:
+
+- **Screenshots**: the 1320 × 2868 PNGs in `store/screenshots/`, up to ten. Only the 6.9-inch iPhone set is required; the app is iPhone-only so no iPad set is needed.
+- **Description and keywords**: deer hunting, property lines, public land, hunting units, wind, rut forecast, blood tracking, deer score.
+- **Support URL**: `https://jordanyoerger.com/rutline/support.html`. **Privacy policy URL**: `https://jordanyoerger.com/rutline/privacy.html`.
+- **App Privacy questionnaire**: declare email address, precise location, photos and user content (pins, trails, notes). All linked to the user, used for app functionality only, no tracking, no advertising, no analytics.
+- **Age rating**: no restricted content. Hunting is fine.
+- **Review notes**: create a demo account yourself and give its email and password here, and note that reviewers can also tap "Use without an account on this device". Add this paragraph so the landowner feature is not misread: *"Property lines and owner-of-record names come from the same public county parcel services that onX Hunt and HuntStand show. Rutline displays them for the parcel the hunter taps and stores nothing unless the hunter saves a note. It does not look up phone numbers or combine records from other sources."*
+- Pick the TestFlight build, submit. First reviews take one to three days.
+
+Two things reviewers check for sign-in apps: account deletion inside the app (done) and, if you ever add Google sign-in, Sign in with Apple alongside it.
+
+## Hidden for launch
+
+These are in the code but switched off for the first store version, each with a one-line switch:
+
+- The landowner **phone web search** ("Find a number"): `SHOW_PHONE_SEARCH` in `src/components/map/LandownerContact.tsx`. Highest review risk, least launch value. Manual phone entry with Call and Text stays.
+- The field guide's **"coming next" cards**: removed from `FieldGuideView.tsx`. Apple's completeness rule rejects placeholder content; add the installments back when they exist.
+- The **OpenStreetMap street layer**: removed from the map. OSM's tile servers do not allow app traffic at scale. Saved settings that pointed at it fall back to satellite.
+
+The blood-camera torch button already hides itself on iPhone, because the WebView does not expose torch control.
 
 ## Updating later
 
@@ -78,4 +106,4 @@ Bump `version` in `package.json`, push, run the workflow with upload ticked. The
 
 - Invite links (`#/join/CODE`) open the website, not the app, until universal links are configured. The app also answers `rutline://join/CODE`. Pasting the code in Settings → Camps works everywhere.
 - The camera torch is not controllable from the WebView; use a flashlight for night tracking.
-- Android: Capacitor can add it with `npx cap add android`; a Play build needs a signing keystore and the Play Console ($25 once). Say the word when you want it.
+- Android: Capacitor can add it with `npx cap add android`; a Play build needs a signing keystore and the Play Console ($25 once). New personal Play accounts must keep 12 opted-in testers for 14 straight days before an app can go to production; an organization account (needs a D-U-N-S number) skips that. Say the word when you want it.

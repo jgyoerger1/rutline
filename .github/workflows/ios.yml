@@ -36,14 +36,22 @@ env:
   VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
   VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
   VITE_AUTH_PROVIDERS: ${{ vars.VITE_AUTH_PROVIDERS }}
+  VITE_ESRI_API_KEY: ${{ vars.VITE_ESRI_API_KEY }}
 
 jobs:
   compile:
     name: Compile (unsigned)
-    runs-on: macos-15
+    # macos-26 runners default to Xcode 26. App Store Connect has rejected
+    # uploads built with anything older since 28 April 2026.
+    runs-on: macos-26
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: Check Xcode is 26 or newer
+        run: |
+          xcodebuild -version
+          MAJOR=$(xcodebuild -version | awk '/Xcode/ {print int($2)}')
+          if [ "$MAJOR" -lt 26 ]; then echo "::error::Xcode $MAJOR is too old for App Store Connect (needs 26+)"; exit 1; fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -79,7 +87,7 @@ jobs:
     name: Sign and upload to TestFlight
     if: github.event_name == 'workflow_dispatch' && inputs.upload == true
     needs: compile
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
     env:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}

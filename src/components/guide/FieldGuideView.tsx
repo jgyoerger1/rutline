@@ -34,11 +34,6 @@ const GUIDES: Installment[] = [
   { meta: SCORING, steps: SCORING_STEPS.length, Figure: RackFigure, Guide: ScoringGuide, figureClass: 'absolute right-2 top-2 w-[78%] md:w-[74%]' },
 ]
 
-const COMING = [
-  { title: 'Aging a buck on the hoof', blurb: 'Body before antlers: neck, brisket, belly line and the way he walks.' },
-  { title: 'Hanging, skinning and quartering', blurb: 'From the gambrel to the cooler without a saw.' },
-]
-
 function readSlug(): string {
   const parts = location.hash.replace(/^#\/?/, '').split('/')
   return parts[0] === 'guide' && parts[1] ? parts[1] : ''
@@ -105,18 +100,6 @@ function GuideList({ onOpen }: { onOpen: (slug: string) => void }) {
               </div>
             </div>
           </button>
-        ))}
-      </div>
-
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        {COMING.map((c) => (
-          <div key={c.title} className="rounded-3xl border border-dashed border-bone-50/10 bg-pine-900/30 p-5 md:p-6">
-            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-bone-600">
-              Coming <span className="w-1 h-1 rounded-full bg-bone-800" /> next
-            </div>
-            <div className="mt-2 text-[17px] font-semibold tracking-tight text-bone-200">{c.title}</div>
-            <p className="mt-1 text-[13px] leading-relaxed text-bone-600">{c.blurb}</p>
-          </div>
         ))}
       </div>
     </div>

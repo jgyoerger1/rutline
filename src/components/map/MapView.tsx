@@ -26,10 +26,15 @@ import ParcelSheet from './ParcelSheet'
 import { rejectDiscovered } from '../../lib/parcelDiscovery'
 import WaypointSheet from './WaypointSheet'
 
+// Esri imagery in a shipped app needs an ArcGIS Location Platform key (the
+// first 2M tiles a month are free). With VITE_ESRI_API_KEY set the keyed
+// endpoint is used; without it, development falls back to the open one.
+const ESRI_KEY = (import.meta.env.VITE_ESRI_API_KEY as string | undefined)?.trim()
 const LAYERS: Record<MapLayer, { url: string; attribution: string; maxNativeZoom: number }> = {
-  satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Imagery © Esri, Maxar, Earthstar Geographics', maxNativeZoom: 19 },
+  satellite: ESRI_KEY
+    ? { url: `https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token=${encodeURIComponent(ESRI_KEY)}`, attribution: 'Powered by Esri · Maxar, Earthstar Geographics', maxNativeZoom: 19 }
+    : { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Imagery © Esri, Maxar, Earthstar Geographics', maxNativeZoom: 19 },
   topo: { url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', attribution: 'USGS The National Map', maxNativeZoom: 16 },
-  streets: { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '© OpenStreetMap contributors', maxNativeZoom: 19 },
 }
 
 const unitStyle = (): L.PathOptions => ({ color: '#f2ede2', weight: 1.6, opacity: 0.75, dashArray: '10 6', fill: false })
@@ -354,7 +359,7 @@ export default function MapView({ active }: { active: boolean }) {
           </div>
         )}
         <div className="ml-auto shrink-0 pointer-events-auto">
-          <Segmented id="layer" value={settings.mapLayer} onChange={(mapLayer) => setSettings({ mapLayer })} options={[{ value: 'satellite', label: 'Sat' }, { value: 'topo', label: 'Topo' }, { value: 'streets', label: 'Streets' }]} className="glass" />
+          <Segmented id="layer" value={settings.mapLayer} onChange={(mapLayer) => setSettings({ mapLayer })} options={[{ value: 'satellite', label: 'Sat' }, { value: 'topo', label: 'Topo' }]} className="glass" />
         </div>
       </div>
       {settings.publicOn && (

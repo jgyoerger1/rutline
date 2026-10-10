@@ -4,6 +4,12 @@ import { firstText, formatPhone, phoneLookups, readMailing, readOwner, smsHref, 
 import { useApp } from '../AppContext'
 import { Button, SectionLabel } from '../ui'
 
+// The web-search path ("Find a number") is hidden for the App Store launch:
+// Apple's privacy rules frown on compiling personal details from public
+// sources, and it is the one feature a reviewer could reject the app over.
+// Flip this to show it again; everything underneath still works.
+const SHOW_PHONE_SEARCH = false
+
 const KIND_NOTE = {
   person: null,
   trust: 'Held in a trust. The trustee is usually the person named, so search them.',
@@ -63,7 +69,7 @@ export default function LandownerContact({ owner, mailAddress, state, where, pho
       {!open && !editing ? (
         <div className="mt-1 flex items-center gap-3 flex-wrap">
           <span className="text-sm text-bone-600">Not on the county record</span>
-          {read && (
+          {SHOW_PHONE_SEARCH && read && (
             <button onClick={() => setOpen(true)} className="push inline-flex items-center gap-1.5 text-[13px] text-bone-50 underline underline-offset-4 decoration-bone-50/30">
               <MagnifyingGlass size={13} /> Find a number
             </button>

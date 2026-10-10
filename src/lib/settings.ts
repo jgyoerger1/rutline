@@ -31,6 +31,8 @@ function load(): Settings {
     const raw = localStorage.getItem(KEY)
     if (!raw) return DEFAULTS
     const parsed = JSON.parse(raw) as Partial<Settings>
+    // The OpenStreetMap street layer was removed before the store launch
+    if ((parsed.mapLayer as string) === 'streets') parsed.mapLayer = 'satellite'
     return { ...DEFAULTS, ...parsed, hunter: { ...DEFAULTS.hunter, ...(parsed.hunter ?? {}) } }
   } catch {
     return DEFAULTS
