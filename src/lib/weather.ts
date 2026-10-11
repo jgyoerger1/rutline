@@ -142,7 +142,8 @@ export function useForecast(lat: number | null, lon: number | null): ForecastSta
     async (force: boolean) => {
       if (lat == null || lon == null) return
       const cached = readCache(lat, lon)
-      if (cached) setForecast(cached)
+      // Show the cached forecast for this place, or nothing: never another place's numbers under this label
+      setForecast(cached)
       if (!force && cached && Date.now() - cached.fetchedAt < FRESH_MS) return
       inflight.current?.abort()
       const ctl = new AbortController()

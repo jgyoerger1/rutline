@@ -6,6 +6,7 @@ import { fmtHour, fmtTemp, fmtTime, wxCode } from '../../lib/format'
 import { degToCompass } from '../../lib/geo'
 import { useApp } from '../AppContext'
 import { WxIcon } from '../icons'
+import SpotPicker from '../SpotPicker'
 import { Button, EmptyState, InlineError, SectionLabel, Skeleton } from '../ui'
 import { CountUp, Reveal } from '../motion'
 import HoofIcon from '../HoofIcon'
@@ -15,7 +16,9 @@ import RutRibbon from './RutRibbon'
 import StandPicks from './StandPicks'
 
 export default function HuntCastView() {
-  const { home, forecast, days, error, refresh, settings, peak, setView } = useApp()
+  // `home` here is wherever the forecast is for: the picked spot if there is one, else home ground
+  const { where: home, spot, setSpot, forecast, days, error, refresh, settings, peak, setView } = useApp()
+  const [picking, setPicking] = useState(false)
   const todayKey = new Date().toISOString().slice(0, 10)
   const upcoming = useMemo(() => {
     const localToday = localKey(new Date())
@@ -62,7 +65,8 @@ export default function HuntCastView() {
 
   return (
     <Page>
-      <Heading sub={home.label} />
+      <Heading sub={home.label} onPick={() => setPicking(true)} isSpot={!!spot} onHome={() => setSpot(null)} />
+      <SpotPicker open={picking} onClose={() => setPicking(false)} />
 
       {/* Day strip */}
       <div className="-mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto no-bar">
@@ -265,12 +269,29 @@ function Page({ children }: { children: React.ReactNode }) {
   return <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-5 md:py-8 space-y-8 pb-12">{children}</div>
 }
 
-function Heading({ sub }: { sub?: string }) {
+function Heading({ sub, onPick, isSpot, onHome }: { sub?: string; onPick?: () => void; isSpot?: boolean; onHome?: () => void }) {
   return (
     <div>
       <SectionLabel>HuntCast</SectionLabel>
       <h1 className="mt-1 text-2xl md:text-3xl font-semibold tracking-tight">When deer are on their feet</h1>
-      {sub && <div className="text-[12px] text-bone-600 mt-1">{sub}</div>}
+      {sub && (
+        <div className="mt-1 flex items-center gap-3 flex-wrap text-[12px]">
+          {onPick ? (
+            <button onClick={onPick} className="push inline-flex items-center gap-1 text-bone-300 hover:text-bone-50" aria-label={`Forecast for ${sub}. Change place`}>
+              <MapPin size={13} weight={isSpot ? 'fill' : 'regular'} className={isSpot ? 'text-ember-400' : ''} />
+              {sub}
+              <CaretDown size={12} />
+            </button>
+          ) : (
+            <span className="text-bone-600">{sub}</span>
+          )}
+          {isSpot && onHome && (
+            <button onClick={onHome} className="push text-ember-400 hover:text-ember-300 underline underline-offset-4 decoration-ember-500/40">
+              Back to home ground
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { BookOpenText, CloudArrowUp, CloudCheck, CloudSlash, CloudWarning, MapTr
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { AppCtx, useApp, type AppState, type View } from './components/AppContext'
 import Onboarding from './components/Onboarding'
+import type { HomeGround } from './lib/types'
 import HoofIcon from './components/HoofIcon'
 import SignIn from './components/auth/SignIn'
 import MapView from './components/map/MapView'
@@ -55,12 +56,33 @@ function readHash(): View {
   return VIEWS.some((v) => v.id === h) ? h : 'map'
 }
 
+const SPOT_KEY = 'rutline.spot.v1'
+
 export default function App() {
   const [settings, setSettings] = useSettings()
   const auth = useAuth()
   const sync = useSyncStatus()
   const home = settings.home
-  const { forecast, loading, error, refresh } = useForecast(home?.lat ?? null, home?.lon ?? null)
+  // A forecast spot picked on the Wind or Predict page lives for the session only
+  const [spot, setSpotState] = useState<HomeGround | null>(() => {
+    try {
+      const raw = sessionStorage.getItem(SPOT_KEY)
+      return raw ? (JSON.parse(raw) as HomeGround) : null
+    } catch {
+      return null
+    }
+  })
+  const setSpot = useCallback((s: HomeGround | null) => {
+    setSpotState(s)
+    try {
+      if (s) sessionStorage.setItem(SPOT_KEY, JSON.stringify(s))
+      else sessionStorage.removeItem(SPOT_KEY)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+  const where = spot ?? home
+  const { forecast, loading, error, refresh } = useForecast(where?.lat ?? null, where?.lon ?? null)
   const [view, setViewState] = useState<View>(readHash)
   const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([])
   const [focusRequest, setFocusRequest] = useState<number | null>(null)
@@ -121,12 +143,13 @@ export default function App() {
     })()
   }, [auth.user, toast, setView])
 
-  const peak = useMemo(() => (home ? parsePeakOverride(settings.rutPeakOverride, home.lat, home.lon, new Date()) : null), [home, settings.rutPeakOverride])
+  // Rut timing follows the forecast spot too: a Kansas hunt gets Kansas's peak, unless the override is set
+  const peak = useMemo(() => (where ? parsePeakOverride(settings.rutPeakOverride, where.lat, where.lon, new Date()) : null), [where, settings.rutPeakOverride])
 
   const days = useMemo(() => {
-    if (!forecast || !home || !peak) return []
-    return scoreForecast(forecast, { lat: home.lat, lon: home.lon, peakRut: peak.date, legalLightMinutes: settings.legalLightMinutes })
-  }, [forecast, home, peak, settings.legalLightMinutes])
+    if (!forecast || !where || !peak) return []
+    return scoreForecast(forecast, { lat: where.lat, lon: where.lon, peakRut: peak.date, legalLightMinutes: settings.legalLightMinutes })
+  }, [forecast, where, peak, settings.legalLightMinutes])
 
   const focusWaypoint = useCallback(
     (id: number) => {
@@ -140,6 +163,9 @@ export default function App() {
     settings,
     setSettings,
     home,
+    spot,
+    setSpot,
+    where,
     forecast,
     loading,
     error,

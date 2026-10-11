@@ -1,18 +1,21 @@
-import { ArrowClockwise, ArrowUp, MapPin, SunHorizon, TrendDown, TrendUp, Wind } from '@phosphor-icons/react'
-import { useMemo } from 'react'
+import { ArrowClockwise, ArrowUp, CaretDown, MapPin, SunHorizon, TrendDown, TrendUp, Wind } from '@phosphor-icons/react'
+import { useMemo, useState } from 'react'
 import { moonInfo } from '../../lib/astro'
 import { fmtDay, fmtHour, fmtPrecip, fmtPressureDelta, fmtSpeed, fmtTemp, fmtTime, relTime, wxCode } from '../../lib/format'
 import { degToCompass } from '../../lib/geo'
 import { nowIndex } from '../../lib/weather'
 import { useApp } from '../AppContext'
 import { WxIcon } from '../icons'
+import SpotPicker from '../SpotPicker'
 import { Button, EmptyState, InlineError, SectionLabel, Skeleton, Stat } from '../ui'
 import { CountUp, Reveal } from '../motion'
 import PressureChart from './PressureChart'
 import WindCompass from './WindCompass'
 
 export default function ForecastView() {
-  const { home, forecast, loading, error, refresh, settings, setView } = useApp()
+  // `home` here is wherever the forecast is for: the picked spot if there is one, else home ground
+  const { where: home, spot, setSpot, forecast, loading, error, refresh, settings, setView } = useApp()
+  const [picking, setPicking] = useState(false)
   const units = settings.units
   const idx = useMemo(() => (forecast ? nowIndex(forecast) : 0), [forecast])
 
@@ -27,7 +30,8 @@ export default function ForecastView() {
   if (!forecast) {
     return (
       <Page>
-        <Header label={home.label} />
+        <Header label={home.label} onPick={() => setPicking(true)} isSpot={!!spot} onHome={() => setSpot(null)} />
+        <SpotPicker open={picking} onClose={() => setPicking(false)} />
         {error ? <InlineError message={error} onRetry={refresh} /> : <ForecastSkeleton />}
       </Page>
     )
@@ -46,7 +50,8 @@ export default function ForecastView() {
 
   return (
     <Page>
-      <Header label={home.label} sub={`${forecast.elevationFt} ft · updated ${relTime(forecast.fetchedAt)}`} onRefresh={refresh} loading={loading} />
+      <Header label={home.label} sub={`${forecast.elevationFt} ft · updated ${relTime(forecast.fetchedAt)}`} onRefresh={refresh} loading={loading} onPick={() => setPicking(true)} isSpot={!!spot} onHome={() => setSpot(null)} />
+      <SpotPicker open={picking} onClose={() => setPicking(false)} />
       {error && <InlineError message={`Showing the last pull. ${error}`} onRetry={refresh} />}
 
       {/* Now: asymmetric split, compass left, numbers right */}
@@ -172,13 +177,27 @@ function Page({ children }: { children: React.ReactNode }) {
   return <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-5 md:py-8 space-y-10 pb-12">{children}</div>
 }
 
-function Header({ label, sub, onRefresh, loading }: { label: string; sub?: string; onRefresh?: () => void; loading?: boolean }) {
+function Header({ label, sub, onRefresh, loading, onPick, isSpot, onHome }: { label: string; sub?: string; onRefresh?: () => void; loading?: boolean; onPick?: () => void; isSpot?: boolean; onHome?: () => void }) {
   return (
     <div className="flex items-end justify-between gap-4">
-      <div>
+      <div className="min-w-0">
         <SectionLabel>Wind and weather</SectionLabel>
-        <h1 className="mt-1 text-2xl md:text-3xl font-semibold tracking-tight">{label}</h1>
-        {sub && <div className="text-[12px] text-bone-600 mt-1">{sub}</div>}
+        {onPick ? (
+          <button onClick={onPick} className="push mt-1 inline-flex items-center gap-2 text-left text-2xl md:text-3xl font-semibold tracking-tight max-w-full" aria-label={`Forecast for ${label}. Change place`}>
+            <span className="truncate">{label}</span>
+            <CaretDown size={18} className="shrink-0 text-bone-600" />
+          </button>
+        ) : (
+          <h1 className="mt-1 text-2xl md:text-3xl font-semibold tracking-tight">{label}</h1>
+        )}
+        <div className="mt-1 flex items-center gap-3 flex-wrap text-[12px] text-bone-600">
+          {sub && <span>{sub}</span>}
+          {isSpot && onHome && (
+            <button onClick={onHome} className="push text-ember-400 hover:text-ember-300 underline underline-offset-4 decoration-ember-500/40">
+              Back to home ground
+            </button>
+          )}
+        </div>
       </div>
       {onRefresh && (
         <Button size="sm" variant="ghost" onClick={onRefresh} disabled={loading} aria-label="Refresh forecast">
