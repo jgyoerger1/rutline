@@ -49,14 +49,22 @@ const browser = await puppeteer.launch({
 })
 const page = await browser.newPage()
 await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }])
-await page.evaluateOnNewDocument((settings) => {
+const seed = (settings) => {
   localStorage.setItem('rutline.settings.v1', JSON.stringify(settings))
   sessionStorage.setItem('rutline.splash.seen', '1')
-}, SETTINGS)
+}
+let init = await page.evaluateOnNewDocument(seed, SETTINGS)
+async function useSettings(settings) {
+  await page.removeScriptToEvaluateOnNewDocument(init.identifier)
+  init = await page.evaluateOnNewDocument(seed, settings)
+}
 page.on('pageerror', (e) => console.log('page error:', e.message))
 
+let loads = 0
 async function open(hash, settle = 2500) {
-  await page.goto(`${BASE}/#/${hash}`, { waitUntil: 'load' })
+  // A changing query string forces a full load; a hash-only change would not
+  // reload, so seeded settings (useSettings) would never take effect
+  await page.goto(`${BASE}/?shot=${++loads}#/${hash}`, { waitUntil: 'load' })
   await page.waitForFunction(() => !!document.querySelector('[data-view-scroll], .leaflet-container'), { timeout: 20000 }).catch(() => {})
   await sleep(settle)
 }
@@ -195,5 +203,22 @@ if (marker) {
 // 9. Field guide index
 await open('guide', 2500)
 await shot('09-field-guide-index')
+
+// 10. LiDAR terrain: hill country in Wayne National Forest, southeast Ohio
+const HILLS = { lat: 39.4695, lon: -82.126, label: 'Wayne National Forest, OH' }
+// Topo base: hillshade multiplies onto it, so ridges, draws and benches read clearly
+await useSettings({ ...SETTINGS, home: HILLS, mapLayer: 'topo', terrainOn: true, terrain: 'hillshade' })
+await mapAt(HILLS.lat, HILLS.lon, 15)
+await page
+  .waitForFunction(
+    () => {
+      const img = document.querySelector('.leaflet-terrain-pane img')
+      return !!img && img.complete && img.naturalWidth > 0 && getComputedStyle(img).opacity !== '0'
+    },
+    { timeout: 45000 },
+  )
+  .catch(() => console.log('terrain render timed out'))
+await sleep(1500)
+await shot('10-lidar-terrain')
 
 await browser.close()
