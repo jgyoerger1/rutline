@@ -16,7 +16,8 @@ export default defineConfig(({ command }) => ({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/*.png', 'brand/*.jpg'],
+      // brand/og.jpg is the link-preview image for Facebook and texts; the app never shows it
+      includeAssets: ['icons/*.png', 'brand/hero-buck.jpg', 'brand/mark.jpg', 'brand/lockup.jpg', 'brand/poster.jpg'],
       manifest: {
         name: 'Rutline',
         short_name: 'Rutline',
@@ -35,6 +36,7 @@ export default defineConfig(({ command }) => ({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,woff2,png,jpg,svg}'],
+        globIgnores: ['**/brand/og.jpg', '**/store/**'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: 'index.html',
         runtimeCaching: [
