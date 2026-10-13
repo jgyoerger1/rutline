@@ -10,6 +10,7 @@ import { getCamps, refreshCamps, resetCamps, setMyName } from './camps'
 import { cloud, type CloudUser, type SyncTable } from './cloud'
 import type { PushRow, RemoteRow } from './cloud/types'
 import { clearLocal, db } from './db'
+import { shrinkImage } from './images'
 import { applyRemoteSettings, getSettings, getSettingsUpdatedAt, syncableSettings } from './settings'
 import type { Photo, Trail, Waypoint } from './types'
 
@@ -153,8 +154,21 @@ async function pushTable(table: SyncTable, me: string): Promise<void> {
       if (!r.uploadedAt && r.blob && r.thumb && !r.ownerId) {
         const path = `${me}/${r.uid}.jpg`
         const thumbPath = `${me}/${r.uid}.thumb.jpg`
-        await cloud.uploadPhoto(path, r.blob)
-        await cloud.uploadPhoto(thumbPath, r.thumb)
+        try {
+          // The photos bucket caps files at 2 MB. New photos are shrunk when added,
+          // but a restored backup can hold an older full-size image.
+          let blob = r.blob
+          if (blob.size > 1_900_000) {
+            blob = (await shrinkImage(blob, 1600, 0.84)).blob
+            await db.photos.update(r.id!, { blob })
+          }
+          await cloud.uploadPhoto(path, blob)
+          await cloud.uploadPhoto(thumbPath, r.thumb)
+        } catch (e) {
+          // Leave this one for the next sync instead of stalling every photo behind it
+          console.warn('Photo upload failed; will retry on the next sync', e)
+          continue
+        }
         r.path = path
         r.thumbPath = thumbPath
         r.uploadedAt = Date.now()
@@ -173,6 +187,8 @@ async function pushTable(table: SyncTable, me: string): Promise<void> {
     const stamp = table === 'photos' ? (cur as Photo).addedAt : (cur as Waypoint | Trail).updatedAt
     const was = table === 'photos' ? (r as Photo).addedAt : (r as Waypoint | Trail).updatedAt
     if (stamp !== was || cur.deletedAt !== r.deletedAt || cur.campId !== r.campId) continue
+    // A photo whose upload failed has no path yet: keep it dirty so the next sync retries it
+    if (table === 'photos' && !cur.deletedAt && !(cur as Photo).path) continue
     if (cur.deletedAt) await tbl.delete(r.id!)
     else await tbl.update(r.id!, { dirty: 0 })
   }

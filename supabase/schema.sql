@@ -313,7 +313,7 @@ create trigger waypoints_share_photos after update of camp_id on public.waypoint
 -- storage bucket for photo bytes: private, one folder per user, camp members may read shared ones
 -- ============================================================
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('photos', 'photos', false, 10485760, array['image/jpeg', 'image/png', 'image/webp'])
+values ('photos', 'photos', false, 2097152, array['image/jpeg', 'image/png', 'image/webp'])  -- 2 MB; photos are shrunk to about 0.5 MB before upload
 on conflict (id) do nothing;
 
 drop policy if exists "photos read own" on storage.objects;
