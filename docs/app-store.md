@@ -28,22 +28,22 @@ Enroll at https://developer.apple.com/programs/enroll/ ($99/year, individual is 
 
 ## 3. Distribution certificate (made on Windows with OpenSSL)
 
-Git for Windows ships OpenSSL, so run these in Git Bash, in any folder you will keep private:
+All signing material lives in `C:\Dev\rutline-secrets` (outside the repo, never commit it). It already holds the private key, the signing request, the certificate bundle and two helper scripts; this is how it was made, for the day a certificate expires (October 2027):
 
 ```bash
+cd /c/Dev/rutline-secrets
 openssl genrsa -out rutline-dist.key 2048
-openssl req -new -key rutline-dist.key -out rutline-dist.csr -subj "/emailAddress=you@example.com/CN=Jordan Yoerger/C=US"
+MSYS_NO_PATHCONV=1 openssl req -new -key rutline-dist.key -out rutline-dist.csr -subj "/CN=Jordan Yoerger/C=US"
 ```
 
-1. https://developer.apple.com/account/resources/certificates → **+** → **Apple Distribution** → upload `rutline-dist.csr` → download `distribution.cer`.
-2. Convert to a password-protected bundle the runner can import:
+1. https://developer.apple.com/account/resources/certificates → **+** → **Apple Distribution** → upload `rutline-dist.csr` → download `distribution.cer` into the folder.
+2. Convert to the bundle the runner imports. Write the password with Node, not a shell redirect: Git Bash leaves a carriage return at the end of the file, OpenSSL bakes it into the bundle, and the Mac then reports "passphrase not correct" for the clean password.
 
 ```bash
 openssl x509 -in distribution.cer -inform DER -out distribution.pem -outform PEM
-openssl pkcs12 -export -inkey rutline-dist.key -in distribution.pem -out rutline-dist.p12 -name "Apple Distribution" -legacy
+node -e "require('fs').writeFileSync('p12-password.txt', require('crypto').randomBytes(18).toString('base64'))"
+P=$(cat p12-password.txt) openssl pkcs12 -export -inkey rutline-dist.key -in distribution.pem -out rutline-dist.p12 -name "Apple Distribution" -keypbe AES-256-CBC -certpbe AES-256-CBC -macalg sha256 -passout env:P
 ```
-
-Pick a password when asked; you will store it as a secret. (If `-legacy` is rejected by your OpenSSL, drop it.)
 
 ## 4. Provisioning profile
 
@@ -51,11 +51,30 @@ https://developer.apple.com/account/resources/profiles → **+** → **App Store
 
 ## 5. App Store Connect API key
 
-https://appstoreconnect.apple.com/access/integrations/api → **+** → name `GitHub Actions`, access **App Manager** → Generate. Download the `.p8` file (one chance only) and note the **Key ID** and the **Issuer ID** shown at the top.
+https://appstoreconnect.apple.com/access/integrations/api → **Team Keys** tab (not Individual Keys, which have no Issuer ID) → **+** → name `GitHub Actions`, access **App Manager** → Generate. Download the `.p8` file (one chance only) into `C:\Dev\rutline-secrets`. Put the **Key ID** and the **Issuer ID** (the UUID at the top of the Team Keys page) into `ids.txt` in that folder:
+
+```text
+APPLE_TEAM_ID=TUJ4ARM9Q5
+IOS_PROFILE_NAME=Rutline App Store
+APPSTORE_KEY_ID=
+APPSTORE_ISSUER_ID=
+```
+
+Test the key against Apple before uploading anything (prints only the result):
+
+```powershell
+cd C:\Dev\rutline-secrets; node check-apple-key.mjs
+```
 
 ## 6. GitHub secrets
 
-Repo → Settings → Secrets and variables → Actions → **Secrets** → New repository secret, one each:
+The loader in the secrets folder encrypts every file and value and uploads all eight in one go, so nothing is pasted anywhere:
+
+```powershell
+cd C:\Dev\rutline-secrets; node load-secrets.mjs
+```
+
+Run it again whenever a file changes; existing secrets are updated in place. By hand, the equivalent is Repo → Settings → Secrets and variables → Actions → **Secrets** → New repository secret, one each:
 
 | Secret | Value |
 |---|---|
