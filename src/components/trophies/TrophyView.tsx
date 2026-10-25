@@ -13,10 +13,15 @@ import RackMeasure from '../guide/RackMeasure'
 import { Reveal } from '../motion'
 import { Button, EmptyState, SectionLabel, Segmented, Sheet, Textarea } from '../ui'
 
+// The AI read (photo -> server function -> Claude) is switched off: it needs an
+// Anthropic key and the score-buck function deployed (supabase/README.md §7).
+// Flip this to show the button again; readBuck() and the function are intact.
+const SHOW_AI_READ = false
+
 /**
  * Trophy Center: the bucks a hunter is after this season, with their trail
- * camera photos and a rough read of age and score. Everything stays on the
- * phone. The AI read sends one photo to the server function and nothing else.
+ * camera photos and a rough read of their score. Everything stays on the
+ * phone; nothing is uploaded.
  */
 export default function TrophyView() {
   const { toast } = useApp()
@@ -317,21 +322,23 @@ function TrophySheet({ trophy, onClose }: { trophy: Trophy | null; onClose: () =
             ) : (
               <>
                 <SectionLabel>No read yet</SectionLabel>
-                <p className="mt-1 text-[13px] text-bone-400 leading-relaxed">Get a rough age and gross score from this photo. Every read is an estimate from a picture, never a tape measure.</p>
+                <p className="mt-1 text-[13px] text-bone-400 leading-relaxed">Get a rough gross score from this photo: judge him against his own head, or trace the rack. Every read is an estimate from a picture, never a tape measure.</p>
               </>
             )}
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button size="sm" variant="primary" onClick={aiRead} disabled={reading || !photo || !!aiNote}>
-                <Sparkle size={15} weight="fill" className={reading ? 'animate-pulse' : ''} /> {reading ? 'Reading the photo' : t.read?.source === 'ai' ? 'Read again' : 'AI read'}
-              </Button>
-              <Button size="sm" variant="secondary" onClick={() => setJudging((v) => !v)}>
+              {SHOW_AI_READ && (
+                <Button size="sm" variant="primary" onClick={aiRead} disabled={reading || !photo || !!aiNote}>
+                  <Sparkle size={15} weight="fill" className={reading ? 'animate-pulse' : ''} /> {reading ? 'Reading the photo' : t.read?.source === 'ai' ? 'Read again' : 'AI read'}
+                </Button>
+              )}
+              <Button size="sm" variant={SHOW_AI_READ ? 'secondary' : 'primary'} onClick={() => setJudging((v) => !v)}>
                 <Crosshair size={15} /> Field judge
               </Button>
               <Button size="sm" variant="secondary" onClick={() => setTracing(true)} disabled={!photo}>
                 <Ruler size={15} /> Trace it
               </Button>
             </div>
-            {aiNote && <p className="mt-2 text-[12px] text-bone-600">{aiNote}</p>}
+            {SHOW_AI_READ && aiNote && <p className="mt-2 text-[12px] text-bone-600">{aiNote}</p>}
             {readError && <p className="mt-2 text-[12.5px] text-ember-400">{readError}</p>}
             {judging && (
               <FieldJudgeForm

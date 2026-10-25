@@ -30,7 +30,7 @@
       <p>Rutline is a hunting map, weather and tracking app. This page explains what it stores and where.</p>
 
       <h2>What stays on your device</h2>
-      <p>Your pins, trails, photos, landowner notes, score sheets and settings are stored in the app's own storage on your phone or browser. If you never sign in, nothing you enter leaves the device except the requests described below. Photos you measure a rack from are processed on the device and never uploaded.</p>
+      <p>Your pins, trails, photos, landowner notes, score sheets and settings are stored in the app's own storage on your phone or browser. If you never sign in, nothing you enter leaves the device except the requests described below. Photos you measure a rack from, and the bucks in Trophy Center with their photos, are processed on the device and never uploaded, even when you use an account.</p>
 
       <h2>What an account stores</h2>
       <p>If you create an account, the same data (pins, trails, photos, landowner notes, settings, and the name you choose for camps) is copied to a private database and file store hosted by Supabase in the United States, so it can sync to your other devices. Each record is tied to your account and protected by row-level security: only you can read it, unless you share a pin or trail into a camp, in which case the members of that camp can read and edit it. Your email address is used to sign in and is shown, as its first part, to camp members who have not set a display name.</p>
@@ -44,7 +44,6 @@
         <li><b>State and county GIS servers</b> return public parcel records (boundaries, owner of record, mailing address, acreage) for the area on screen. Rutline uses statewide layers where a state publishes one and county services elsewhere; to find a county's service it may ask the <b>FCC</b> which county a point is in and search <b>ArcGIS Online</b> for that county's parcel layer. These are public records. Rutline does not store them except in the landowner notes you choose to save, and it does not look up phone numbers.</li>
         <li><b>USGS PAD-US and state wildlife agencies</b> return public land boundaries, walk-in access areas and hunting unit boundaries.</li>
         <li><b>Supabase</b> provides sign-in, database and photo storage when you use an account.</li>
-        <li><b>Anthropic</b>, only when you tap "AI read" on a buck in Trophy Center: that one photo, the month and your home ground's county are sent to Anthropic's model through Rutline's server function to estimate the buck's age and score. Neither the function nor Anthropic keeps the photo. Trophy Center photos otherwise stay on your phone and are never uploaded, even with an account.</li>
       </ul>
       <p>Rutline has no advertising, no analytics and no trackers.</p>
 

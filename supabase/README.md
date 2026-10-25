@@ -71,7 +71,9 @@ The free plan covers a few friends: 500 MB database, 1 GB photo storage, 50,000 
 
 On a dev build (`npm run dev`), run `localStorage.setItem('rutline.cloud', 'mock')` in the browser console and reload. A fake backend stored in localStorage stands in for Supabase: any email with any 8-character password signs in, and the one-time code is `000000`. Remove the key to go back.
 
-## 7. AI reads in Trophy Center
+## 7. AI reads in Trophy Center (switched off in the app)
+
+The button is hidden behind `SHOW_AI_READ` in `src/components/trophies/TrophyView.tsx`. Do the steps below first, then flip it on and add the Anthropic sentence back to `public/privacy.html`.
 
 "AI read" on a buck sends the photo to a small server function, which asks Claude for a rough age and gross score. The function holds the Anthropic API key so the app never does. Until it is deployed, the button explains that reads are not switched on, and field judging and the tracer still work.
 
