@@ -1,4 +1,4 @@
-import { ArrowSquareOut, CopySimple, EnvelopeSimple, Trash } from '@phosphor-icons/react'
+import { ArrowSquareOut, CopySimple, EnvelopeSimple, Lock, Trash } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 import { campName, nameFor, useCamps } from '../../lib/camps'
 import { deleteWaypoint, setWaypointCamp, updateWaypoint } from '../../lib/db'
@@ -14,7 +14,7 @@ import PhotoGallery from './PhotoGallery'
 import WindPicker from './WindPicker'
 
 export default function WaypointSheet({ waypoint, me, windDir, onClose, onLetter }: { waypoint: Waypoint | null; me: { lat: number; lon: number } | null; windDir?: number; onClose: () => void; onLetter?: (t: LetterTarget) => void }) {
-  const { toast, settings } = useApp()
+  const { toast, settings, pro, openPro } = useApp()
   const camps = useCamps()
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
@@ -147,7 +147,26 @@ export default function WaypointSheet({ waypoint, me, windDir, onClose, onLetter
             </div>
           )}
 
-          {w.owner && (
+          {w.owner && !pro && (w.owner.name || w.owner.mailAddress) && (
+            <div className="rounded-2xl border border-bone-50/10 bg-pine-900/70 p-4">
+              <div className="flex items-center gap-2">
+                <Lock size={14} className="text-bone-500" />
+                <SectionLabel>Landowner · Pro</SectionLabel>
+              </div>
+              <div className="mt-1 text-sm text-bone-300 leading-relaxed">This pin carries the owner of record for its parcel. Pro shows the details and writes the permission letter.</div>
+              <div className="text-[11.5px] text-bone-600 mt-1 font-mono tnum">{[w.owner.county ? `${w.owner.county} County` : '', w.owner.parcelId, w.owner.acres != null ? `${w.owner.acres} ac` : ''].filter(Boolean).join(' · ')}</div>
+              <Button size="sm" variant="primary" className="mt-3" onClick={() => openPro('landowner')}>
+                See what Pro unlocks
+              </Button>
+            </div>
+          )}
+          {w.owner && !pro && !w.owner.name && !w.owner.mailAddress && (
+            <div className="rounded-2xl border border-bone-50/10 bg-pine-900/70 p-4">
+              <SectionLabel>Parcel</SectionLabel>
+              <div className="text-[12px] text-bone-500 mt-1 font-mono tnum">{[w.owner.county ? `${w.owner.county} County` : '', w.owner.parcelId, w.owner.acres != null ? `${w.owner.acres} ac` : ''].filter(Boolean).join(' · ')}</div>
+            </div>
+          )}
+          {w.owner && pro && (
             <div className="rounded-2xl border border-bone-50/10 bg-pine-900/70 p-4">
               <div className="flex items-center justify-between">
                 <SectionLabel>Landowner</SectionLabel>

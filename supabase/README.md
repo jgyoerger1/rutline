@@ -87,7 +87,7 @@ Verify JWT means only signed-in users can spend reads. If reads ever need a cap,
 
 ## 8. Rutline Pro (season pass)
 
-The app is free. Pro is a 12-month pass that unlocks the terrain overlay, unlimited blood tracking, the full week of HuntCast, Trophy Center, the whole field guide and camps. It lives on the account in the `entitlements` table, which only the server can write.
+The app is free. Pro is a 12-month pass that unlocks slope and contour terrain (hillshade stays free), landowner details and permission letters, unlimited blood tracking, the full week of HuntCast, Trophy Center, the whole field guide and camps. It lives on the account in the `entitlements` table, which only the server can write.
 
 1. **Run the Pro block** at the bottom of `schema.sql` in the SQL editor (the `entitlements` table and its read policy). Until it exists, nobody has Pro and the app treats that as normal.
 2. **Give friends Pro by hand** with the `insert ... on conflict` snippet in the same block (Table Editor works too: add a row to `entitlements` with the user's id from Authentication → Users and a `pro_until` a year out). The app picks it up on its next check: sign-in, app open, or the "Check again" button on the Pro sheet.

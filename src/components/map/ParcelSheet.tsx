@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowSquareOut, CopySimple, CrosshairSimple, EnvelopeSimple, MapPin, Plus } from '@phosphor-icons/react'
+import { ArrowSquareOut, CopySimple, CrosshairSimple, EnvelopeSimple, Lock, MapPin, Plus } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 import { addWaypoint, liveWaypointsOfTypes, updateWaypoint } from '../../lib/db'
 import type { Parcel } from '../../lib/parcels'
@@ -30,7 +30,7 @@ function keepPhone(key: string, phone: string) {
 }
 
 export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSaved, onRejectSource, alsoHere = [] }: { parcel: Parcel | null; alsoHere?: string[]; onClose: () => void; onCenter: (p: Parcel) => void; onLetter: (t: LetterTarget) => void; onSaved: (waypointId: number) => void; onRejectSource?: (sourceId: string) => void }) {
-  const { toast } = useApp()
+  const { toast, pro, openPro } = useApp()
   const [picking, setPicking] = useState(false)
   const pins = useLiveQuery(() => liveWaypointsOfTypes(['stand', 'blind', 'access', 'food', 'other']), [])
   const p = parcel
@@ -40,13 +40,14 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
   const ownerInfo = (): OwnerInfo | null =>
     p
       ? {
-          name: p.owner ?? p.mailName ?? '',
-          mailAddress: p.mailAddress ?? '',
+          // Owner details are Pro; a free pin keeps the parcel, not the person
+          name: pro ? (p.owner ?? p.mailName ?? '') : '',
+          mailAddress: pro ? (p.mailAddress ?? '') : '',
           parcelId: p.parcelId,
           county: p.county,
           state: p.state || undefined,
           situs: p.situs ?? '',
-          phone,
+          phone: pro ? phone : undefined,
           acres: p.acres,
           source: p.sourceLabel,
           savedAt: Date.now(),
@@ -57,7 +58,7 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
     const info = ownerInfo()
     if (!info) return
     await updateWaypoint(id, { owner: info })
-    toast('Landowner saved to pin')
+    toast(pro ? 'Landowner saved to pin' : 'Parcel saved to pin')
     setPicking(false)
     onSaved(id)
   }
@@ -68,7 +69,7 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
     const name = info.name ? `${info.name.split(' & ')[0]} parcel` : p.situs ? p.situs.split(',')[0] : `Parcel ${p.parcelId || ''}`.trim()
     const id = await addWaypoint({ type: 'access', name, lat: p.centroid[0], lon: p.centroid[1], note: [p.situs, info.mailAddress ? `Mail: ${info.mailAddress}` : '', p.acres ? `${p.acres} ac` : ''].filter(Boolean).join('\n') })
     await updateWaypoint(id, { owner: info })
-    toast('Pinned with landowner')
+    toast(pro ? 'Pinned with landowner' : 'Parcel pinned')
     setPicking(false)
     onSaved(id)
   }
@@ -90,12 +91,12 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
         onClose()
       }}
       scrollKey={p?.key ?? null}
-      title={p ? (p.owner ? p.owner : p.situs ? p.situs.split(',')[0] : 'Parcel') : ''}
+      title={p ? (pro && p.owner ? p.owner : p.situs ? p.situs.split(',')[0] : p.parcelId ? `Parcel ${p.parcelId}` : 'Parcel') : ''}
       footer={
         p ? (
           <div className="flex flex-wrap gap-2">
-            <Button variant="primary" size="sm" onClick={() => onLetter({ name: p.owner ?? p.mailName ?? '', mailAddress: p.mailAddress ?? '', parcelId: p.parcelId, county: p.county, situs: p.situs ?? '' })}>
-              <EnvelopeSimple size={15} /> Permission letter
+            <Button variant="primary" size="sm" onClick={() => (pro ? onLetter({ name: p.owner ?? p.mailName ?? '', mailAddress: p.mailAddress ?? '', parcelId: p.parcelId, county: p.county, situs: p.situs ?? '' }) : openPro('landowner'))}>
+              {pro ? <EnvelopeSimple size={15} /> : <Lock size={15} />} Permission letter
             </Button>
             <Button size="sm" onClick={() => setPicking((v) => !v)}>
               <MapPin size={15} /> Save to pin
@@ -110,6 +111,22 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
       {p && (
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+            {!pro && (p.owner || p.mailName || p.mailAddress) ? (
+              <div className="col-span-2 rounded-2xl border border-bone-50/10 bg-pine-900/70 p-4">
+                <div className="flex items-center gap-2">
+                  <Lock size={14} className="text-bone-500" />
+                  <SectionLabel>Owner of record · Pro</SectionLabel>
+                </div>
+                <div className="mt-1 text-sm text-bone-300 leading-relaxed">
+                  The {p.county ? p.county + ' County' : 'county'} record has {p.owner ? 'the owner of record' : 'the tax-bill name'}
+                  {p.mailAddress ? ' and a mailing address' : ''} for this parcel. Pro shows them and writes the permission letter for you.
+                </div>
+                <Button size="sm" variant="primary" className="mt-3" onClick={() => openPro('landowner')}>
+                  See what Pro unlocks
+                </Button>
+              </div>
+            ) : (
+              <>
             <div className="col-span-2">
               <SectionLabel>Owner of record</SectionLabel>
               {p.owner ? (
@@ -159,6 +176,8 @@ export default function ParcelSheet({ parcel, onClose, onCenter, onLetter, onSav
                   }}
                 />
               </div>
+            )}
+              </>
             )}
 
             <div>
