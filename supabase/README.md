@@ -84,3 +84,18 @@ The button is hidden behind `SHOW_AI_READ` in `src/components/trophies/TrophyVie
 3. Sign in on the phone and tap **AI read** on a buck.
 
 Verify JWT means only signed-in users can spend reads. If reads ever need a cap, add a per-user daily count in a table and check it at the top of the function.
+
+## 8. Rutline Pro (season pass)
+
+The app is free. Pro is a 12-month pass that unlocks the terrain overlay, unlimited blood tracking, the full week of HuntCast, Trophy Center, the whole field guide and camps. It lives on the account in the `entitlements` table, which only the server can write.
+
+1. **Run the Pro block** at the bottom of `schema.sql` in the SQL editor (the `entitlements` table and its read policy). Until it exists, nobody has Pro and the app treats that as normal.
+2. **Give friends Pro by hand** with the `insert ... on conflict` snippet in the same block (Table Editor works too: add a row to `entitlements` with the user's id from Authentication → Users and a `pro_until` a year out). The app picks it up on its next check: sign-in, app open, or the "Check again" button on the Pro sheet.
+3. **Sell it with Stripe** (free account, 2.9% + 30¢ per sale):
+   - Products → add "Rutline Pro season pass", one-time, $19.99.
+   - Payment Links → new link for that product. After payment, redirect to `https://jordanyoerger.com/rutline/?pro=1#/more`. Copy the link URL.
+   - Add it as a repo *variable* `VITE_STRIPE_PAYMENT_LINK`. The app appends `client_reference_id` (the account id) and the email when it opens the link, which is how the sale finds the account.
+   - Deploy the webhook: `supabase functions deploy stripe-webhook --no-verify-jwt` (or paste `supabase/functions/stripe-webhook/index.ts` in the dashboard and turn Verify JWT **off**, since Stripe calls it). Set secrets `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`.
+   - Stripe → Developers → Webhooks → add endpoint `https://lqktkqwfgbmqnetvbsfm.supabase.co/functions/v1/stripe-webhook` for `checkout.session.completed`. The signing secret it shows is `STRIPE_WEBHOOK_SECRET`.
+   - Test with Stripe's test mode first: a test Payment Link, card 4242 4242 4242 4242, and check the `entitlements` row appears.
+4. **App Store version:** Apple requires its own in-app purchase for digital unlocks, so the native app hides the buy button. Before submitting, add RevenueCat (free under $2,500 a month) with a non-renewing "season pass" product and write the entitlement the same way.

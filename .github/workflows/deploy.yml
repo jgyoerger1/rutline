@@ -31,6 +31,8 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_AUTH_PROVIDERS: ${{ vars.VITE_AUTH_PROVIDERS }}
           VITE_ESRI_API_KEY: ${{ vars.VITE_ESRI_API_KEY }}
+          VITE_STRIPE_PAYMENT_LINK: ${{ vars.VITE_STRIPE_PAYMENT_LINK }}
+          VITE_PRO_PRICE: ${{ vars.VITE_PRO_PRICE }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react'
 import type { DayScore } from '../lib/huntcast'
 import type { PeakGuess } from '../lib/rut'
+import type { ProFeature } from '../lib/pro'
 import type { Forecast, HomeGround, Settings } from '../lib/types'
 
 export type View = 'map' | 'forecast' | 'huntcast' | 'tracker' | 'trophies' | 'guide' | 'more'
@@ -23,6 +24,10 @@ export interface AppState {
   view: View
   setView: (v: View) => void
   toast: (message: string) => void
+  /** Rutline Pro on this account */
+  pro: boolean
+  /** Open the Pro sheet, leading with the feature that was locked */
+  openPro: (feature?: ProFeature) => void
   /** Map wants to open a specific waypoint */
   focusWaypoint: (id: number) => void
   focusRequest: number | null

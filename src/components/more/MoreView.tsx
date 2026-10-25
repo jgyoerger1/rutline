@@ -6,6 +6,7 @@ import { defaultPeakRut, seasonYear } from '../../lib/rut'
 import { downloadBlob } from '../../lib/useGeo'
 import { useApp } from '../AppContext'
 import HomePicker from '../HomePicker'
+import ProSection from '../pro/ProSection'
 import AccountSection from './AccountSection'
 import CampsSection from './CampsSection'
 import CustomSourceForm from './CustomSourceForm'
@@ -158,6 +159,10 @@ export default function MoreView() {
                 <Trash size={15} /> Clear this device
               </Button>
             </div>
+          </Section>
+
+          <Section title="Rutline Pro" body="The app is free. Pro is a season pass that opens the rest.">
+            <ProSection />
           </Section>
 
           <Section title="Put it on your iPhone" body="Rutline is a web app that installs like a native one: full screen, home-screen icon, works offline on ground you have already looked at.">

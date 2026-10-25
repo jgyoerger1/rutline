@@ -1,8 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { BookOpenText, CloudArrowUp, CloudCheck, CloudSlash, CloudWarning, MapTrifold, Scan, SlidersHorizontal, Trophy, Wind, type IconWeight } from '@phosphor-icons/react'
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppCtx, useApp, type AppState, type View } from './components/AppContext'
 import Onboarding from './components/Onboarding'
+import ProSheet from './components/pro/ProSheet'
+import { refreshPro, useProStatus, type ProFeature } from './lib/pro'
 import type { HomeGround } from './lib/types'
 import HoofIcon from './components/HoofIcon'
 import SignIn from './components/auth/SignIn'
@@ -85,6 +87,10 @@ export default function App() {
   }, [])
   const where = spot ?? home
   const { forecast, loading, error, refresh } = useForecast(where?.lat ?? null, where?.lon ?? null)
+  // Rutline Pro: locked features open the Pro sheet, leading with what was tapped
+  const pro = useProStatus()
+  const [proFeature, setProFeature] = useState<ProFeature | null>(null)
+  const openPro = useCallback((feature?: ProFeature) => setProFeature(feature ?? 'all'), [])
   const [view, setViewState] = useState<View>(readHash)
   const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([])
   const [focusRequest, setFocusRequest] = useState<number | null>(null)
@@ -92,6 +98,11 @@ export default function App() {
 
   useEffect(() => {
     startSync()
+    // Back from Stripe checkout: the webhook has usually landed by now
+    if (new URLSearchParams(location.search).has('pro')) {
+      history.replaceState(null, '', location.pathname + location.hash)
+      void refreshPro().then((s) => toast(s.pro ? 'Rutline Pro is on. Thank you.' : 'Payment received? Pro switches on within a minute. Check again from the Pro sheet.'))
+    }
     // Native shell: status bar, splash, and invite links opened into the app
     void initNative((url) => {
       const m = /join\/([A-Za-z0-9]{6,12})/.exec(url)
@@ -129,6 +140,14 @@ export default function App() {
       /* ignore */
     }
     if (!code) return
+    if (!pro) {
+      // Camps are Pro. Keep the invite; this effect runs again once Pro switches on
+      if (!proToastShown.current) {
+        proToastShown.current = true
+        toast('That camp invite needs Rutline Pro. It is saved for when you have it.')
+      }
+      return
+    }
     const backend = cloud
     void (async () => {
       try {
@@ -143,7 +162,8 @@ export default function App() {
         toast(e instanceof Error ? e.message : 'Could not join that camp')
       }
     })()
-  }, [auth.user, toast, setView])
+  }, [auth.user, toast, setView, pro])
+  const proToastShown = useRef(false)
 
   // Rut timing follows the forecast spot too: a Kansas hunt gets Kansas's peak, unless the override is set
   const peak = useMemo(() => (where ? parsePeakOverride(settings.rutPeakOverride, where.lat, where.lon, new Date()) : null), [where, settings.rutPeakOverride])
@@ -180,6 +200,8 @@ export default function App() {
     focusWaypoint,
     focusRequest,
     clearFocus: () => setFocusRequest(null),
+    pro,
+    openPro,
   }
 
   // Gate order: sign-in (when a backend exists and the user has not opted out), then home ground
@@ -275,6 +297,7 @@ export default function App() {
       <AnimatePresence>{showSignIn && <SignIn key="signin" />}</AnimatePresence>
       <SwitchSheet open={sync.state === 'switch'} from={sync.switchFrom} />
       <RecoverySheet open={auth.recovery} />
+      <ProSheet feature={proFeature} onClose={() => setProFeature(null)} />
       <Splash />
 
       <div className="fixed left-1/2 -translate-x-1/2 bottom-24 md:bottom-8 z-[70] flex flex-col gap-2 items-center pointer-events-none">

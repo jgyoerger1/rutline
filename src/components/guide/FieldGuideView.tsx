@@ -3,8 +3,9 @@
  * `#/guide/<slug>` opens one.
  */
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowRight } from '@phosphor-icons/react'
+import { ArrowRight, Lock } from '@phosphor-icons/react'
 import { useEffect, useRef, useState, type ComponentType } from 'react'
+import { useApp } from '../AppContext'
 import { SectionLabel } from '../ui'
 import { DeerFigure } from './DeerDiagram'
 import { RackFigure } from './RackDiagram'
@@ -39,9 +40,13 @@ function readSlug(): string {
   return parts[0] === 'guide' && parts[1] ? parts[1] : ''
 }
 
+/** Field dressing is free; the other installments are Rutline Pro */
+const FREE_GUIDE = 'field-dressing'
+
 export default function FieldGuideView() {
   const [slug, setSlug] = useState(readSlug)
   const ref = useRef<HTMLDivElement>(null)
+  const { pro, openPro } = useApp()
 
   useEffect(() => {
     const on = () => setSlug(readSlug())
@@ -56,7 +61,16 @@ export default function FieldGuideView() {
     if (c) c.scrollTop = 0
   }
 
-  const open = GUIDES.find((g) => g.meta.slug === slug)
+  const found = GUIDES.find((g) => g.meta.slug === slug)
+  const locked = !!found && found.meta.slug !== FREE_GUIDE && !pro
+  const open = locked ? undefined : found
+  useEffect(() => {
+    // A link straight to a Pro guide lands on the list with the Pro sheet up
+    if (locked) {
+      openPro('guide')
+      go('')
+    }
+  }, [locked]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div ref={ref}>
@@ -76,6 +90,7 @@ export default function FieldGuideView() {
 }
 
 function GuideList({ onOpen }: { onOpen: (slug: string) => void }) {
+  const { pro, openPro } = useApp()
   return (
     <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-5 md:py-8 pb-16">
       <SectionLabel>Field Guide</SectionLabel>
@@ -84,18 +99,33 @@ function GuideList({ onOpen }: { onOpen: (slug: string) => void }) {
 
       <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3 cascade">
         {GUIDES.map((g, i) => (
-          <button key={g.meta.slug} style={{ ['--i' as string]: i }} onClick={() => onOpen(g.meta.slug)} className="fg-card push group relative text-left overflow-hidden rounded-3xl border border-bone-50/10 bg-pine-900/70 p-6 md:p-7 min-h-[300px] md:min-h-[360px] flex flex-col justify-end">
+          <button key={g.meta.slug} style={{ ['--i' as string]: i }} onClick={() => (!pro && g.meta.slug !== FREE_GUIDE ? openPro('guide') : onOpen(g.meta.slug))} className="fg-card push group relative text-left overflow-hidden rounded-3xl border border-bone-50/10 bg-pine-900/70 p-6 md:p-7 min-h-[300px] md:min-h-[360px] flex flex-col justify-end">
             <g.Figure className={`${g.figureClass} h-auto pointer-events-none`} />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_28%,rgba(21,24,22,0.94)_72%)] pointer-events-none" aria-hidden />
             <div className="relative">
-              <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-ember-400">Installment {String(g.meta.installment).padStart(2, '0')}</div>
+              <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-ember-400 flex items-center gap-2">
+                Installment {String(g.meta.installment).padStart(2, '0')}
+                {!pro && g.meta.slug !== FREE_GUIDE && (
+                  <span className="inline-flex items-center gap-1 rounded border border-bone-50/15 px-1.5 py-0.5 text-[9.5px] text-bone-400">
+                    <Lock size={9} /> Pro
+                  </span>
+                )}
+              </div>
               <div className="mt-2 text-[24px] md:text-[28px] font-semibold tracking-tight leading-[1.05]">{g.meta.title}</div>
               <p className="mt-2 text-[14px] leading-relaxed text-bone-200">{g.meta.subtitle}</p>
               <div className="mt-5 flex items-center gap-5 font-mono text-[11px] uppercase tracking-[0.16em] text-bone-400">
                 <span>{g.steps} steps</span>
                 <span>About {g.meta.minutes} min</span>
                 <span className="ml-auto inline-flex items-center gap-1.5 text-bone-50">
-                  Open <ArrowRight size={14} weight="bold" className="fg-arrow" />
+                  {!pro && g.meta.slug !== FREE_GUIDE ? (
+                    <>
+                      Unlock <Lock size={13} weight="bold" />
+                    </>
+                  ) : (
+                    <>
+                      Open <ArrowRight size={14} weight="bold" className="fg-arrow" />
+                    </>
+                  )}
                 </span>
               </div>
             </div>

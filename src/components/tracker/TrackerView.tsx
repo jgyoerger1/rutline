@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { CameraSlash, DropHalf, Eye, Flashlight, Image, MapPin, Pause, Play, Scan, X } from '@phosphor-icons/react'
+import { CameraSlash, DropHalf, Eye, Flashlight, Image, Lock, MapPin, Pause, Play, Scan, X } from '@phosphor-icons/react'
+import { FREE_TRACK_SECONDS } from '../../lib/pro'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { addPhotoBlob, addWaypoint } from '../../lib/db'
 import { locate } from '../../lib/geo'
@@ -31,10 +32,33 @@ const COLORS: Record<TrackerColor, [number, number, number]> = {
 const WORK_W = 400
 const ALERT_PIXELS = 36
 
+// Free gets five minutes of camera time a day; Pro is unlimited. The count
+// lives on the device, keyed by the day, so it survives a reload.
+const TRACK_KEY = 'rutline.track.v1'
+const todayKey = () => new Date().toISOString().slice(0, 10)
+function readTrack(): number {
+  try {
+    const r = JSON.parse(localStorage.getItem(TRACK_KEY) ?? 'null') as { day?: string; seconds?: number } | null
+    return r && r.day === todayKey() ? Number(r.seconds) || 0 : 0
+  } catch {
+    return 0
+  }
+}
+function writeTrack(seconds: number): void {
+  try {
+    localStorage.setItem(TRACK_KEY, JSON.stringify({ day: todayKey(), seconds }))
+  } catch {
+    /* ignore */
+  }
+}
+const fmtLeft = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+
 type Status = 'idle' | 'starting' | 'live' | 'frozen' | 'photo' | 'error'
 
 export default function TrackerView() {
-  const { settings, setSettings, toast } = useApp()
+  const { settings, setSettings, toast, pro, openPro } = useApp()
+  const [usedToday, setUsedToday] = useState(readTrack)
+  const leftToday = Math.max(0, FREE_TRACK_SECONDS - usedToday)
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
   const [hits, setHits] = useState(0)
@@ -177,6 +201,25 @@ export default function TrackerView() {
     setStatus('idle')
     setHits(0)
   }, [])
+
+  // Free: count camera seconds while the light is live
+  useEffect(() => {
+    if (pro || status !== 'live') return
+    const id = window.setInterval(() => {
+      setUsedToday((s) => {
+        const n = s + 1
+        writeTrack(n)
+        return n
+      })
+    }, 1000)
+    return () => window.clearInterval(id)
+  }, [pro, status])
+  useEffect(() => {
+    if (pro || usedToday < FREE_TRACK_SECONDS || (status !== 'live' && status !== 'frozen')) return
+    stop()
+    toast('Your five free minutes are used for today.')
+    openPro('tracker')
+  }, [usedToday, pro, status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function start() {
     setError(null)
@@ -326,10 +369,21 @@ export default function TrackerView() {
                   body="Everything but blood drops to gray. Hold the phone about waist high, sweep in a slow grid, and keep your own shadow off the ground. At night use a white LED light without a hot spot."
                   action={
                     <>
-                      <Button variant="primary" size="lg" onClick={start} disabled={status === 'starting'}>
-                        <Scan size={18} weight="bold" /> {status === 'starting' ? 'Opening camera' : 'Start camera'}
-                      </Button>
+                      {!pro && leftToday === 0 ? (
+                        <Button variant="primary" size="lg" onClick={() => openPro('tracker')}>
+                          <Lock size={18} weight="bold" /> Five minutes used today
+                        </Button>
+                      ) : (
+                        <Button variant="primary" size="lg" onClick={start} disabled={status === 'starting'}>
+                          <Scan size={18} weight="bold" /> {status === 'starting' ? 'Opening camera' : 'Start camera'}
+                        </Button>
+                      )}
                       <PhotoButton onPhoto={onPhoto} />
+                      {!pro && (
+                        <button onClick={() => openPro('tracker')} className="push basis-full text-[12px] text-bone-600 hover:text-bone-300 text-left">
+                          Free: five minutes of camera a day, <span className="font-mono tnum text-bone-400">{fmtLeft(leftToday)}</span> left. Pro runs all night.
+                        </button>
+                      )}
                     </>
                   }
                   className="w-full max-w-lg"
@@ -384,7 +438,12 @@ export default function TrackerView() {
                     )}
                   </>
                 )}
-                <div className="ml-auto flex gap-2">
+                <div className="ml-auto flex items-center gap-2">
+                  {!pro && (
+                    <span className={`font-mono text-[12px] tnum ${leftToday <= 60 ? 'text-ember-400' : 'text-bone-500'}`} title="Free camera time left today">
+                      {fmtLeft(leftToday)}
+                    </span>
+                  )}
                   <Button variant="primary" onClick={markBlood} disabled={marking}>
                     <MapPin size={16} weight="bold" /> {marking ? 'Pinning' : 'Mark blood here'}
                   </Button>

@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { CaretDown, MapPin } from '@phosphor-icons/react'
+import { CaretDown, Lock, MapPin } from '@phosphor-icons/react'
+import { FREE_FORECAST_DAYS } from '../../lib/pro'
 import { useEffect, useMemo, useState } from 'react'
 import { TIERS, type DayScore, type HourScore } from '../../lib/huntcast'
 import { fmtHour, fmtTemp, fmtTime, wxCode } from '../../lib/format'
@@ -17,7 +18,7 @@ import StandPicks from './StandPicks'
 
 export default function HuntCastView() {
   // `home` here is wherever the forecast is for: the picked spot if there is one, else home ground
-  const { where: home, spot, setSpot, forecast, days, error, refresh, settings, peak, setView } = useApp()
+  const { where: home, spot, setSpot, forecast, days, error, refresh, settings, peak, setView, pro, openPro } = useApp()
   const [picking, setPicking] = useState(false)
   const todayKey = new Date().toISOString().slice(0, 10)
   const upcoming = useMemo(() => {
@@ -73,6 +74,20 @@ export default function HuntCastView() {
         <div className="flex gap-2 min-w-max cascade">
           {upcoming.map((d, i) => {
             const active = d.date === day.date
+            // Free shows today and tomorrow; the rest of the week is Pro
+            if (!pro && i >= FREE_FORECAST_DAYS)
+              return (
+                <button key={d.date} style={{ ['--i' as string]: i }} onClick={() => openPro('huntcast')} className="push w-[104px] md:w-[124px] shrink-0 rounded-2xl px-3 py-3 text-left border border-dashed border-bone-50/10 bg-pine-900/30 text-bone-600" aria-label={`${d.dayDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}: Rutline Pro`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-[11px] font-mono uppercase tracking-wider">{d.dayDate.toLocaleDateString([], { weekday: 'short' })}</div>
+                      <div className="text-sm font-medium mt-0.5 text-bone-500">{d.dayDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>
+                    </div>
+                    <Lock size={16} className="text-bone-700" />
+                  </div>
+                  <div className="mt-2 text-[12px] font-medium text-ember-500/80">Pro</div>
+                </button>
+              )
             return (
               <button
                 key={d.date}

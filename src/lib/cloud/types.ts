@@ -108,4 +108,7 @@ export interface CloudBackend {
 
   /** Call a server-side function as the signed-in user (AI reads live there, with the API key) */
   callFunction<T>(name: string, body: unknown): Promise<T>
+
+  /** Rutline Pro for the signed-in user; null when none (or the table is not there yet) */
+  getEntitlement(): Promise<{ proUntil: number | null; source: string | null } | null>
 }

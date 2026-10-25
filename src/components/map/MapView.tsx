@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowUp, Check, CrosshairSimple, GpsFix, List, MapPin, Mountains, Path, Plus, Polygon as ParcelsIcon, Signpost, Trash, TreeEvergreen, X } from '@phosphor-icons/react'
+import { ArrowUp, Check, CrosshairSimple, GpsFix, List, Lock, MapPin, Mountains, Path, Plus, Polygon as ParcelsIcon, Signpost, Trash, TreeEvergreen, X } from '@phosphor-icons/react'
 import L from 'leaflet'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
@@ -50,7 +50,9 @@ const TRAIL_STYLE: Record<TrailKind, L.PathOptions> = {
 }
 
 export default function MapView({ active }: { active: boolean }) {
-  const { home, settings, setSettings, forecast, toast, focusRequest, clearFocus, setView } = useApp()
+  const { home, settings, setSettings, forecast, toast, focusRequest, clearFocus, setView, pro, openPro } = useApp()
+  // The terrain overlay is Rutline Pro; a saved "on" from before means nothing without it
+  const terrainOn = settings.terrainOn && pro
   const waypoints = useLiveQuery(liveWaypoints, [])
   const trails = useLiveQuery(liveTrails, [])
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -180,7 +182,7 @@ export default function MapView({ active }: { active: boolean }) {
       <div className="absolute inset-0 isolate z-0">
       <MapContainer center={center} zoom={zoom} zoomControl={false} attributionControl className="w-full h-full" ref={mapRef as never} maxZoom={20} preferCanvas>
         <TileLayer key={settings.mapLayer} url={layer.url} attribution={layer.attribution} maxNativeZoom={layer.maxNativeZoom} maxZoom={20} />
-        <TerrainLayer enabled={settings.terrainOn} mode={settings.terrain} onStatus={setTerrainStatus} />
+        <TerrainLayer enabled={terrainOn} mode={settings.terrain} onStatus={setTerrainStatus} />
         <OverlayLayer kind="public" enabled={settings.publicOn} sources={PUBLIC_SOURCES} minZoom={9} style={publicStyle} onStatus={onPublicStatus} />
         <OverlayLayer kind="access" enabled={settings.publicOn} sources={ACCESS_SOURCES} minZoom={9} style={accessStyle} onStatus={onAccessStatus} />
         <OverlayLayer kind="units" enabled={settings.unitsOn} sources={UNIT_SOURCES} minZoom={7} style={unitStyle} label={unitMapLabel} onStatus={onUnitsStatus} />
@@ -332,20 +334,22 @@ export default function MapView({ active }: { active: boolean }) {
         </button>
         <button
           onClick={() => {
+            if (!pro) return openPro('terrain')
             // Desktop: the chip toggles and the segmented picks the mode. Phone: no room, so the chip cycles.
-            if (window.innerWidth >= 768) setSettings({ terrainOn: !settings.terrainOn })
-            else if (!settings.terrainOn) setSettings({ terrainOn: true, terrain: 'hillshade' })
+            if (window.innerWidth >= 768) setSettings({ terrainOn: !terrainOn })
+            else if (!terrainOn) setSettings({ terrainOn: true, terrain: 'hillshade' })
             else if (settings.terrain === 'hillshade') setSettings({ terrain: 'slope' })
             else if (settings.terrain === 'slope') setSettings({ terrain: 'contours' })
             else setSettings({ terrainOn: false })
           }}
-          aria-pressed={settings.terrainOn}
-          title="LiDAR terrain (USGS 3DEP)"
-          className={`push pointer-events-auto shrink-0 glass rounded-xl h-11 px-3 inline-flex items-center gap-2 text-sm ${settings.terrainOn ? 'text-bone-50' : 'text-bone-400'}`}
+          aria-pressed={terrainOn}
+          title={pro ? 'LiDAR terrain (USGS 3DEP)' : 'LiDAR terrain is part of Rutline Pro'}
+          className={`push pointer-events-auto shrink-0 glass rounded-xl h-11 px-3 inline-flex items-center gap-2 text-sm ${terrainOn ? 'text-bone-50' : 'text-bone-400'}`}
         >
-          <Mountains size={16} weight={settings.terrainOn ? 'fill' : 'regular'} className={settings.terrainOn ? 'text-ember-400' : ''} />
+          <Mountains size={16} weight={terrainOn ? 'fill' : 'regular'} className={terrainOn ? 'text-ember-400' : ''} />
           <span className="font-medium hidden md:inline">Terrain</span>
-          {settings.terrainOn && (
+          {!pro && <Lock size={11} className="text-bone-600" />}
+          {terrainOn && (
             <span className="font-mono text-[11px] text-bone-400 tnum inline-flex items-center gap-1.5">
               <span className="md:hidden text-bone-50">{settings.terrain === 'hillshade' ? 'shade' : settings.terrain === 'slope' ? 'slope' : '5 ft'}</span>
               {terrainStatus === 'loading' && <span className="w-1.5 h-1.5 rounded-full bg-ember-400 breathe" />}
@@ -353,7 +357,7 @@ export default function MapView({ active }: { active: boolean }) {
             </span>
           )}
         </button>
-        {settings.terrainOn && (
+        {terrainOn && (
           <div className="hidden md:block shrink-0 pointer-events-auto">
             <Segmented id="terrain" value={settings.terrain} onChange={(terrain) => setSettings({ terrain })} options={[{ value: 'hillshade', label: 'Shade' }, { value: 'slope', label: 'Slope' }, { value: 'contours', label: '5 ft' }]} className="glass" />
           </div>

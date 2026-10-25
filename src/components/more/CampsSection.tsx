@@ -14,7 +14,7 @@ export function inviteLink(code: string): string {
 }
 
 export default function CampsSection() {
-  const { toast } = useApp()
+  const { toast, pro, openPro } = useApp()
   const auth = useAuth()
   const camps = useCamps()
   const [name, setName] = useState('')
@@ -31,6 +31,16 @@ export default function CampsSection() {
   }, [auth.user, camps.loaded])
 
   if (!cloudConfigured || !cloud) return <p className="text-sm text-bone-400">Camps need the account backend. See the Account section above.</p>
+  if (!pro) {
+    return (
+      <div>
+        <p className="text-sm text-bone-400 leading-relaxed">A camp is a shared map for your lease or your crew: stands, trails and photos on one map, with an invite code for friends. Camps are part of Rutline Pro.</p>
+        <Button variant="primary" className="mt-3" onClick={() => openPro('camps')}>
+          See what Pro unlocks
+        </Button>
+      </div>
+    )
+  }
   if (!auth.user) {
     return (
       <div>

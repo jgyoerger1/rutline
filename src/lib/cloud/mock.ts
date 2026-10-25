@@ -329,6 +329,11 @@ export class MockBackend implements CloudBackend {
 
   // ---------- storage ----------
 
+  async getEntitlement(): Promise<{ proUntil: number | null; source: string | null } | null> {
+    // localStorage.rutline.mock.pro = '1' gives the mock user a season of Pro
+    return localStorage.getItem('rutline.mock.pro') === '1' ? { proUntil: Date.now() + 365 * 86400e3, source: 'mock' } : null
+  }
+
   async callFunction<T>(name: string, body: unknown): Promise<T> {
     void body
     await new Promise((r) => setTimeout(r, 900))

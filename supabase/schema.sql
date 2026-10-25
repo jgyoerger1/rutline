@@ -356,3 +356,24 @@ begin
 end $$;
 revoke all on function public.delete_account() from public;
 grant execute on function public.delete_account() to authenticated;
+
+-- ============================================================
+-- Rutline Pro (season pass). One row per user; the app reads its own row,
+-- and only the service role (the Stripe webhook, or you in the dashboard)
+-- can write it. No insert/update policy for authenticated on purpose.
+-- ============================================================
+create table if not exists public.entitlements (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  pro_until timestamptz,
+  source text,
+  last_session text,
+  updated_at timestamptz not null default now()
+);
+alter table public.entitlements enable row level security;
+drop policy if exists "entitlements read own" on public.entitlements;
+create policy "entitlements read own" on public.entitlements for select to authenticated using (auth.uid() = user_id);
+
+-- Give a friend (or a Founder) a year of Pro by hand:
+--   insert into public.entitlements (user_id, pro_until, source)
+--   values ((select id from auth.users where email = 'friend@example.com'), now() + interval '1 year', 'founder')
+--   on conflict (user_id) do update set pro_until = excluded.pro_until, source = excluded.source, updated_at = now();

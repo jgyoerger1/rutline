@@ -276,6 +276,19 @@ export class SupabaseBackend implements CloudBackend {
 
   // ---------- storage ----------
 
+  async getEntitlement(): Promise<{ proUntil: number | null; source: string | null } | null> {
+    if (!this.userId) return null
+    const { data, error } = await this.sb.from('entitlements').select('pro_until, source').eq('user_id', this.userId).maybeSingle()
+    if (error) {
+      // Schema without the entitlements table yet: nobody has Pro, and that is not an error
+      if (error.code === '42P01' || /entitlements/i.test(error.message)) return null
+      fail(error)
+    }
+    if (!data) return null
+    const d = data as { pro_until?: string | null; source?: string | null }
+    return { proUntil: d.pro_until ? Date.parse(d.pro_until) : null, source: d.source ?? null }
+  }
+
   async callFunction<T>(name: string, body: unknown): Promise<T> {
     const { data, error } = await this.sb.functions.invoke<T>(name, { body: body as Record<string, unknown> })
     if (error) {

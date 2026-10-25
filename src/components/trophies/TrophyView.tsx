@@ -1,4 +1,4 @@
-import { CaretRight, Crosshair, ImageSquare, Minus, Plus, Ruler, Sparkle, Trash, Trophy as TrophyIcon, X } from '@phosphor-icons/react'
+import { CaretRight, Crosshair, ImageSquare, Lock, Minus, Plus, Ruler, Sparkle, Trash, Trophy as TrophyIcon, X } from '@phosphor-icons/react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../../lib/auth'
@@ -24,7 +24,7 @@ const SHOW_AI_READ = false
  * phone; nothing is uploaded.
  */
 export default function TrophyView() {
-  const { toast } = useApp()
+  const { toast, pro, openPro } = useApp()
   const trophies = useLiveQuery(() => liveTrophies(), [])
   const [openId, setOpenId] = useState<number | null>(null)
   const [adding, setAdding] = useState(false)
@@ -47,6 +47,26 @@ export default function TrophyView() {
   }
 
   const open = trophies?.find((t) => t.id === openId) ?? null
+
+  if (!pro)
+    return (
+      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-5 md:py-8 space-y-8 pb-12">
+        <div>
+          <SectionLabel>Trophy Center</SectionLabel>
+          <h1 className="mt-1 text-2xl md:text-3xl font-semibold tracking-tight">Bucks you're after</h1>
+        </div>
+        <EmptyState
+          icon={<Lock size={26} weight="duotone" />}
+          title="Trophy Center is part of Rutline Pro"
+          body="Keep up to twenty bucks with their trail camera photos, a rough score from the photo, where each one shows up and whether he is still on the list."
+          action={
+            <Button variant="primary" onClick={() => openPro('trophies')}>
+              See what Pro unlocks
+            </Button>
+          }
+        />
+      </div>
+    )
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-5 md:py-8 space-y-8 pb-12">

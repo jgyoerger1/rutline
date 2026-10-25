@@ -88,6 +88,10 @@ In App Store Connect fill in the listing:
 
 Two things reviewers check for sign-in apps: account deletion inside the app (done) and, if you ever add Google sign-in, Sign in with Apple alongside it.
 
+## Rutline Pro in the native app
+
+The web app sells Pro through a Stripe Payment Link (`supabase/README.md` §8). Apple does not allow that inside an iOS app, so the native build shows the Pro sheet without a buy button. Before submitting to the App Store, add in-app purchase: RevenueCat's Capacitor plugin with a non-renewing "Rutline Pro season pass" product at the same price, and have its webhook (or the app, after a verified purchase) write the same `entitlements` row. Submitting with locked features and no way to buy them is a 2.1 rejection, so either ship IAP or ship the native app fully unlocked.
+
 ## Hidden for launch
 
 These are in the code but switched off for the first store version, each with a one-line switch:
