@@ -1,5 +1,14 @@
 import { useSyncExternalStore } from 'react'
 import { cloud } from './cloud'
+import { isNative } from './native'
+
+/**
+ * The native app has no way to buy Pro until in-app purchase ships, and
+ * Apple's reviewers reject locked features with no purchase path, so every
+ * native build (TestFlight for now) runs fully unlocked. Flip this off when
+ * RevenueCat is wired in.
+ */
+export const NATIVE_PREVIEW = isNative
 
 /**
  * Rutline Pro. The app is free; Pro is a season pass (12 months) that opens
@@ -36,7 +45,10 @@ export interface ProState {
 const KEY = 'rutline.pro.v1'
 const EMPTY: ProState = { pro: false, until: null, source: null, checkedAt: 0 }
 
+const PREVIEW: ProState = { pro: true, until: null, source: 'native-preview', checkedAt: 0 }
+
 function load(): ProState {
+  if (NATIVE_PREVIEW) return PREVIEW
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return EMPTY
@@ -77,6 +89,10 @@ export function refreshPro(): Promise<ProState> {
   if (inflight) return inflight
   inflight = (async () => {
     try {
+      if (NATIVE_PREVIEW) {
+        set({ ...PREVIEW, checkedAt: Date.now() })
+        return state
+      }
       if (import.meta.env.DEV && localStorage.getItem('rutline.pro') === '1') {
         set({ pro: true, until: Date.now() + 365 * 86400e3, source: 'dev', checkedAt: Date.now() })
         return state
@@ -112,6 +128,7 @@ export function proUntilLabel(until: number | null): string {
 if (typeof window !== 'undefined') {
   void refreshPro()
   cloud?.onAuthChange((user) => {
+    if (NATIVE_PREVIEW) return
     if (!user) set({ ...EMPTY, checkedAt: Date.now() })
     else void refreshPro()
   })

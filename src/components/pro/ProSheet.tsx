@@ -35,9 +35,9 @@ export default function ProSheet({ feature, onClose }: { feature: ProFeature | n
       <div className="space-y-6">
         {pro.pro ? (
           <div className="rounded-2xl border border-ember-500/30 bg-ember-500/10 p-4">
-            <SectionLabel>Your season pass</SectionLabel>
-            <div className="mt-1 text-[15px] text-bone-50">Pro is on until {proUntilLabel(pro.until)}.</div>
-            <p className="mt-1 text-[12.5px] text-bone-400">Everything below is unlocked on this account, on every phone you sign in on.</p>
+            <SectionLabel>{pro.source === 'native-preview' ? 'Preview build' : 'Your season pass'}</SectionLabel>
+            <div className="mt-1 text-[15px] text-bone-50">{pro.until ? `Pro is on until ${proUntilLabel(pro.until)}.` : 'Everything is unlocked in this build.'}</div>
+            <p className="mt-1 text-[12.5px] text-bone-400">{pro.source === 'native-preview' ? 'Pro will be sold through the App Store when Rutline ships there. Until then, the whole app is yours to test.' : 'Everything below is unlocked on this account, on every phone you sign in on.'}</p>
           </div>
         ) : (
           <div>
