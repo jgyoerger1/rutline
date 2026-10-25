@@ -1,12 +1,13 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { cloud, cloudConfigured } from './cloud'
 import { makeThumb, readExifDate, shrinkImage } from './images'
-import type { Photo, Trail, Waypoint, WaypointType } from './types'
+import { MAX_TROPHIES, MAX_TROPHY_PHOTOS, type BuckRead, type Photo, type Trail, type Trophy, type TrophyPhoto, type Waypoint, type WaypointType } from './types'
 
 class RutlineDB extends Dexie {
   waypoints!: EntityTable<Waypoint, 'id'>
   photos!: EntityTable<Photo, 'id'>
   trails!: EntityTable<Trail, 'id'>
+  trophies!: EntityTable<Trophy, 'id'>
 
   constructor() {
     super('rutline')
@@ -72,6 +73,13 @@ class RutlineDB extends Dexie {
             })
         }
       })
+    // v4: Trophy Center. Bucks on the hit list live on this device only
+    this.version(4).stores({
+      waypoints: '++id, &uid, type, updatedAt, dirty, campId',
+      photos: '++id, &uid, waypointId, waypointUid, takenAt, dirty, campId',
+      trails: '++id, &uid, kind, updatedAt, dirty, campId',
+      trophies: '++id, &uid, status, updatedAt',
+    })
   }
 }
 
@@ -256,6 +264,9 @@ export async function deleteTrail(id: number): Promise<void> {
 interface BackupPhoto extends Omit<Photo, 'blob' | 'thumb'> {
   data: string
 }
+interface BackupTrophy extends Omit<Trophy, 'photos'> {
+  photos: Array<Omit<TrophyPhoto, 'blob' | 'thumb'> & { data: string }>
+}
 
 export interface Backup {
   app: 'rutline' | 'downwind'
@@ -264,6 +275,8 @@ export interface Backup {
   waypoints: Waypoint[]
   trails: Trail[]
   photos: BackupPhoto[]
+  /** Since the Trophy Center; older backups have none */
+  trophies?: BackupTrophy[]
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -283,7 +296,7 @@ function base64ToBlob(b64: string, type = 'image/jpeg'): Blob {
 }
 
 export async function exportBackup(): Promise<Blob> {
-  const [waypoints, trails, photos] = await Promise.all([liveWaypoints(), liveTrails(), db.photos.filter((p) => !p.deletedAt).toArray()])
+  const [waypoints, trails, photos, trophies] = await Promise.all([liveWaypoints(), liveTrails(), db.photos.filter((p) => !p.deletedAt).toArray(), db.trophies.toArray()])
   const out: Backup = {
     app: 'rutline',
     version: 2,
@@ -299,18 +312,31 @@ export async function exportBackup(): Promise<Blob> {
         return { ...rest, data: blob ? await blobToBase64(blob) : '' }
       }),
     ),
+    trophies: await Promise.all(
+      trophies.map(async (t) => ({
+        ...t,
+        photos: await Promise.all(
+          t.photos.map(async (p) => {
+            const { blob, thumb, ...rest } = p
+            void thumb
+            return { ...rest, data: await blobToBase64(blob) }
+          }),
+        ),
+      })),
+    ),
   }
   return new Blob([JSON.stringify(out)], { type: 'application/json' })
 }
 
-export async function importBackup(file: Blob, mode: 'merge' | 'replace'): Promise<{ waypoints: number; trails: number; photos: number }> {
+export async function importBackup(file: Blob, mode: 'merge' | 'replace'): Promise<{ waypoints: number; trails: number; photos: number; trophies: number }> {
   const parsed = JSON.parse(await file.text()) as Backup
   if (parsed.app !== 'rutline' && parsed.app !== 'downwind') throw new Error('That file is not a Rutline backup.')
   const idByUid = new Map<string, number>()
   const now = Date.now()
   let photos = 0
-  await db.transaction('rw', db.waypoints, db.trails, db.photos, async () => {
-    if (mode === 'replace') await Promise.all([db.waypoints.clear(), db.trails.clear(), db.photos.clear()])
+  let trophies = 0
+  await db.transaction('rw', db.waypoints, db.trails, db.photos, db.trophies, async () => {
+    if (mode === 'replace') await Promise.all([db.waypoints.clear(), db.trails.clear(), db.photos.clear(), db.trophies.clear()])
     const oldIdToUid = new Map<number, string>()
     for (const w of parsed.waypoints) {
       const { id, ...rest } = w
@@ -351,9 +377,27 @@ export async function importBackup(file: Blob, mode: 'merge' | 'replace'): Promi
       else await db.photos.add(row)
       photos++
     }
+    for (const t of parsed.trophies ?? []) {
+      if ((await db.trophies.count()) >= MAX_TROPHIES) break
+      const { id, ...rest } = t
+      void id
+      const uid = rest.uid ?? crypto.randomUUID()
+      const restored: TrophyPhoto[] = []
+      for (const p of rest.photos.slice(0, MAX_TROPHY_PHOTOS)) {
+        if (!p.data) continue
+        const { data, ...meta } = p
+        const blob = base64ToBlob(data)
+        restored.push({ ...meta, blob, thumb: await makeThumb(blob, 360) })
+      }
+      const existing = await db.trophies.where('uid').equals(uid).first()
+      const row = { ...rest, uid, photos: restored, waypointId: null, updatedAt: Math.max(rest.updatedAt ?? 0, now) } as Trophy
+      if (existing) await db.trophies.put({ ...row, id: existing.id })
+      else await db.trophies.add(row)
+      trophies++
+    }
   })
   changed()
-  return { waypoints: parsed.waypoints.length, trails: parsed.trails.length, photos }
+  return { waypoints: parsed.waypoints.length, trails: parsed.trails.length, photos, trophies }
 }
 
 export async function exportGeoJSON(): Promise<Blob> {
@@ -390,5 +434,66 @@ export async function clearLocal(): Promise<void> {
 
 // Dev-only hook so scripts (store screenshots, tests) can seed data without the UI
 if (import.meta.env.DEV) {
-  ;(window as unknown as { __rutline?: unknown }).__rutline = { db, addWaypoint, addTrail }
+  ;(window as unknown as { __rutline?: unknown }).__rutline = { db, addWaypoint, addTrail, addTrophy }
+}
+
+// ---------- Trophy Center ----------
+// Bucks the hunter is after, with their photos and the latest estimate. Kept
+// on this device only (and in backups); nothing here syncs to an account.
+
+export const liveTrophies = () => db.trophies.orderBy('updatedAt').reverse().toArray()
+
+async function toTrophyPhoto(file: Blob): Promise<TrophyPhoto> {
+  const full = await shrinkImage(file, 1600, 0.84)
+  const thumb = await makeThumb(full.blob, 360)
+  return { id: crypto.randomUUID(), blob: full.blob, thumb, width: full.width, height: full.height, addedAt: Date.now() }
+}
+
+export async function addTrophy(file: Blob, name?: string): Promise<number> {
+  const count = await db.trophies.count()
+  if (count >= MAX_TROPHIES) throw new Error(`Trophy Center holds ${MAX_TROPHIES} bucks. Retire one to add another.`)
+  const photo = await toTrophyPhoto(file)
+  const now = Date.now()
+  const id = (await db.trophies.add({
+    uid: crypto.randomUUID(),
+    name: name?.trim() || `Buck ${count + 1}`,
+    status: 'hunting',
+    notes: '',
+    photos: [photo],
+    read: null,
+    waypointId: null,
+    lastSeen: now,
+    createdAt: now,
+    updatedAt: now,
+  })) as number
+  return id
+}
+
+export async function updateTrophy(id: number, patch: Partial<Omit<Trophy, 'id' | 'uid' | 'photos' | 'createdAt'>>): Promise<void> {
+  await db.trophies.update(id, { ...patch, updatedAt: Date.now() })
+}
+
+export async function setTrophyRead(id: number, read: BuckRead | null): Promise<void> {
+  await db.trophies.update(id, { read, updatedAt: Date.now() })
+}
+
+export async function addTrophyPhoto(id: number, file: Blob): Promise<TrophyPhoto> {
+  const t = await db.trophies.get(id)
+  if (!t) throw new Error('That buck is gone.')
+  if (t.photos.length >= MAX_TROPHY_PHOTOS) throw new Error(`Up to ${MAX_TROPHY_PHOTOS} photos per buck. Remove one first.`)
+  const photo = await toTrophyPhoto(file)
+  await db.trophies.update(id, { photos: [...t.photos, photo], lastSeen: Date.now(), updatedAt: Date.now() })
+  return photo
+}
+
+export async function removeTrophyPhoto(id: number, photoId: string): Promise<void> {
+  const t = await db.trophies.get(id)
+  if (!t) return
+  const photos = t.photos.filter((p) => p.id !== photoId)
+  const read = t.read && t.read.photoId === photoId ? null : t.read
+  await db.trophies.update(id, { photos, read, updatedAt: Date.now() })
+}
+
+export async function deleteTrophy(id: number): Promise<void> {
+  await db.trophies.delete(id)
 }

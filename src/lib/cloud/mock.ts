@@ -329,6 +329,25 @@ export class MockBackend implements CloudBackend {
 
   // ---------- storage ----------
 
+  async callFunction<T>(name: string, body: unknown): Promise<T> {
+    void body
+    await new Promise((r) => setTimeout(r, 900))
+    if (name === 'score-buck') {
+      return {
+        is_buck: true,
+        points: 10,
+        age_class: '4.5',
+        age_confidence: 'medium',
+        gross_low: 138,
+        gross_high: 150,
+        score_confidence: 'medium',
+        why: 'Heavy, rut-swollen neck runs straight into the shoulder and the belly sags, which reads as a mature buck. Beams reach past the nose with a spread about two inches outside the ears.',
+        limit: 'The head is turned, so the far side is guessed from the near side. A broadside photo at the same camera would tighten this.',
+      } as T
+    }
+    throw new Error(`Mock backend has no function named ${name}`)
+  }
+
   async uploadPhoto(path: string, blob: Blob): Promise<void> {
     this.store.files[path] = await blobToDataUrl(blob)
     this.save()

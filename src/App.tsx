@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { BookOpenText, CloudArrowUp, CloudCheck, CloudSlash, CloudWarning, MapTrifold, Scan, SlidersHorizontal, Wind, type IconWeight } from '@phosphor-icons/react'
+import { BookOpenText, CloudArrowUp, CloudCheck, CloudSlash, CloudWarning, MapTrifold, Scan, SlidersHorizontal, Trophy, Wind, type IconWeight } from '@phosphor-icons/react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { AppCtx, useApp, type AppState, type View } from './components/AppContext'
 import Onboarding from './components/Onboarding'
@@ -25,6 +25,7 @@ const HuntCastView = lazy(() => import('./components/huntcast/HuntCastView'))
 const TrackerView = lazy(() => import('./components/tracker/TrackerView'))
 const MoreView = lazy(() => import('./components/more/MoreView'))
 const FieldGuideView = lazy(() => import('./components/guide/FieldGuideView'))
+const TrophyView = lazy(() => import('./components/trophies/TrophyView'))
 
 type NavIcon = React.ComponentType<{ size?: number | string; weight?: IconWeight; className?: string }>
 
@@ -34,6 +35,7 @@ const VIEWS: Array<{ id: View; label: string; short?: string; Icon: NavIcon }> =
   { id: 'forecast', label: 'Wind', Icon: Wind },
   { id: 'huntcast', label: 'Predict', Icon: HoofIcon },
   { id: 'tracker', label: 'Track', Icon: Scan },
+  { id: 'trophies', label: 'Trophy Center', short: 'Trophies', Icon: Trophy },
   { id: 'guide', label: 'Field Guide', short: 'Guide', Icon: BookOpenText },
   { id: 'more', label: 'Settings', Icon: SlidersHorizontal },
 ]
@@ -241,6 +243,7 @@ export default function App() {
                       {view === 'forecast' && <ForecastView />}
                       {view === 'huntcast' && <HuntCastView />}
                       {view === 'tracker' && <TrackerView />}
+                      {view === 'trophies' && <TrophyView />}
                       {view === 'guide' && <FieldGuideView />}
                       {view === 'more' && <MoreView />}
                     </PageTransition>
@@ -252,7 +255,7 @@ export default function App() {
 
           {/* Mobile tab bar */}
           <nav className="md:hidden shrink-0 glass border-t border-bone-50/8 pb-safe" aria-label="Primary">
-            <div className="grid grid-cols-6 h-16">
+            <div className="grid grid-cols-7 h-16">
               {VIEWS.map(({ id, label, short, Icon }) => {
                 const active = view === id
                 return (

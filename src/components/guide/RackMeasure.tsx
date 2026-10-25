@@ -9,7 +9,7 @@ import { ArrowCounterClockwise, ArrowRight, Camera, Check, Images, TrashSimple, 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { fmtEighths, scoreSheet, type Sheet } from '../../lib/score'
-import { Button } from '../ui'
+import { Button, pushSheet } from '../ui'
 
 interface Pt {
   x: number
@@ -83,7 +83,7 @@ interface View {
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y)
 const pathLength = (pts: Pt[]) => pts.reduce((s, p, i) => (i ? s + dist(pts[i - 1], p) : 0), 0)
 
-export default function RackMeasure({ onClose, onApply }: { onClose: () => void; onApply: (values: Sheet) => void }) {
+export default function RackMeasure({ onClose, onApply, initial }: { onClose: () => void; onApply: (values: Sheet) => void; initial?: { blob: Blob; name?: string } }) {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [active, setActive] = useState(0)
   const [traces, setTraces] = useState<Record<string, Trace>>({})
@@ -135,10 +135,14 @@ export default function RackMeasure({ onClose, onApply }: { onClose: () => void;
 
   useEffect(() => () => photos.forEach((p) => p.bitmap.close()), []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Opened from Trophy Center with a photo already chosen
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    if (initial) void addFile(initial.blob, initial.name)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    // Join the sheet stack so Escape closes only the tracer, not the sheet under it
+    return pushSheet(onClose)
   }, [onClose])
 
   // Dev hook so the tool can be driven without a camera

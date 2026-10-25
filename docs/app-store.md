@@ -98,6 +98,8 @@ These are in the code but switched off for the first store version, each with a 
 
 The blood-camera torch button already hides itself on iPhone, because the WebView does not expose torch control.
 
+Trophy Center's **AI read** stays off until the `score-buck` server function is deployed with an Anthropic key (`supabase/README.md` §7). Until then the button explains that reads are not switched on, and field judging and the tracer work without it. If you submit before deploying it, say so in the review notes.
+
 ## Updating later
 
 Bump `version` in `package.json`, push, run the workflow with upload ticked. The build number is the GitHub run number, so it always increases.

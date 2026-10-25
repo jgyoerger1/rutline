@@ -13,7 +13,10 @@ export default function WindCompass({ dir, speed, gust, unit, size = 240 }: { di
   const acc = useRef<number>(dir)
   const delta = ((dir - (acc.current % 360) + 540) % 360) - 180
   acc.current += delta
-  const rotate = acc.current + 180 // streamline drawn pointing "to"; wind dir is "from"
+  // The needle is drawn with its tail at the top and its arrowhead at the bottom.
+  // Rotating by the wind's "from" bearing puts the tail on the side the wind
+  // comes from and the arrowhead where it goes, which is where scent carries.
+  const rotate = acc.current
 
   const ticks = Array.from({ length: 36 }, (_, i) => i * 10)
   return (

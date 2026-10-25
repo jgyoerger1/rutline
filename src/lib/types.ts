@@ -236,3 +236,56 @@ export interface Forecast {
   hours: HourData[]
   days: DayData[]
 }
+
+// ---------- Trophy Center ----------
+
+export type TrophyStatus = 'hunting' | 'tagged' | 'passed' | 'gone'
+export const TROPHY_STATUS: Record<TrophyStatus, { label: string; hint: string }> = {
+  hunting: { label: 'Hunting', hint: 'On the hit list this season' },
+  tagged: { label: 'Tagged', hint: 'He is on the wall' },
+  passed: { label: 'Passed', hint: 'Let him walk for another year' },
+  gone: { label: 'Gone', hint: 'Not seen since, or taken by someone else' },
+}
+
+export interface TrophyPhoto {
+  id: string
+  blob: Blob
+  thumb: Blob
+  width: number
+  height: number
+  addedAt: number
+}
+
+/** One estimate of a buck: from the AI read, from field judging, or from the tracer */
+export interface BuckRead {
+  source: 'ai' | 'field' | 'tape'
+  at: number
+  /** '1.5' .. '5.5+' or null when the body cannot be judged */
+  ageClass: string | null
+  points: number | null
+  grossLow: number
+  grossHigh: number
+  confidence: 'low' | 'medium' | 'high'
+  why: string
+  limit: string
+  /** Which photo the read was made from */
+  photoId: string | null
+}
+
+export interface Trophy {
+  id?: number
+  uid: string
+  name: string
+  status: TrophyStatus
+  notes: string
+  photos: TrophyPhoto[]
+  read: BuckRead | null
+  /** Camera or stand pin where he shows up */
+  waypointId: number | null
+  lastSeen: number | null
+  createdAt: number
+  updatedAt: number
+}
+
+export const MAX_TROPHIES = 20
+export const MAX_TROPHY_PHOTOS = 4

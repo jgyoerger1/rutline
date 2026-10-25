@@ -60,6 +60,16 @@ export function Field({ label, helper, error, children, className = '' }: { labe
 }
 
 const sheetStack: Array<{ close: () => void }> = []
+
+/** A full-screen panel that is not a Sheet can still own Escape while open; returns the remover */
+export function pushSheet(close: () => void): () => void {
+  const entry = { close }
+  sheetStack.push(entry)
+  return () => {
+    const i = sheetStack.indexOf(entry)
+    if (i >= 0) sheetStack.splice(i, 1)
+  }
+}
 if (typeof window !== 'undefined') {
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && sheetStack.length) sheetStack[sheetStack.length - 1].close()

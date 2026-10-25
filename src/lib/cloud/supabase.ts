@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
 import type { AuthEvent, Camp, CampMember, CampRole, CloudBackend, CloudUser, OAuthProvider, PushRow, RemoteProfile, RemoteRow, SyncTable } from './types'
 
@@ -274,6 +275,20 @@ export class SupabaseBackend implements CloudBackend {
   }
 
   // ---------- storage ----------
+
+  async callFunction<T>(name: string, body: unknown): Promise<T> {
+    const { data, error } = await this.sb.functions.invoke<T>(name, { body: body as Record<string, unknown> })
+    if (error) {
+      if (error instanceof FunctionsHttpError) {
+        const status = error.context?.status
+        if (status === 404) throw new Error('This feature is not switched on for this app yet.')
+        const detail = (await error.context.json().catch(() => null)) as { error?: string } | null
+        throw new Error(detail?.error ?? `The server answered ${status ?? 'with an error'}.`)
+      }
+      throw new Error(error.message || 'Could not reach the server.')
+    }
+    return data as T
+  }
 
   async uploadPhoto(path: string, blob: Blob): Promise<void> {
     const { error } = await this.sb.storage.from('photos').upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg', cacheControl: '31536000' })

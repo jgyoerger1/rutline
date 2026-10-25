@@ -105,4 +105,7 @@ export interface CloudBackend {
   uploadPhoto(path: string, blob: Blob): Promise<void>
   downloadPhoto(path: string): Promise<Blob>
   deletePhotos(paths: string[]): Promise<void>
+
+  /** Call a server-side function as the signed-in user (AI reads live there, with the API key) */
+  callFunction<T>(name: string, body: unknown): Promise<T>
 }

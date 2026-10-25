@@ -70,3 +70,15 @@ The free plan covers a few friends: 500 MB database, 1 GB photo storage, 50,000 
 ## Testing without a project
 
 On a dev build (`npm run dev`), run `localStorage.setItem('rutline.cloud', 'mock')` in the browser console and reload. A fake backend stored in localStorage stands in for Supabase: any email with any 8-character password signs in, and the one-time code is `000000`. Remove the key to go back.
+
+## 7. AI reads in Trophy Center
+
+"AI read" on a buck sends the photo to a small server function, which asks Claude for a rough age and gross score. The function holds the Anthropic API key so the app never does. Until it is deployed, the button explains that reads are not switched on, and field judging and the tracer still work.
+
+1. Get an API key at https://console.anthropic.com (Settings → API keys) and add a few dollars of credit. A read costs about two cents.
+2. Deploy the function in `supabase/functions/score-buck/index.ts`. Either:
+   - **Dashboard:** Edge Functions → Deploy a new function → name it `score-buck`, paste the file, keep **Verify JWT** on, deploy. Then Edge Functions → Secrets → add `ANTHROPIC_API_KEY`.
+   - **CLI:** `supabase login`, `supabase link --project-ref lqktkqwfgbmqnetvbsfm`, `supabase secrets set ANTHROPIC_API_KEY=sk-ant-...`, `supabase functions deploy score-buck`.
+3. Sign in on the phone and tap **AI read** on a buck.
+
+Verify JWT means only signed-in users can spend reads. If reads ever need a cap, add a per-user daily count in a table and check it at the top of the function.
