@@ -1,7 +1,8 @@
 import { ArrowClockwise, ArrowSquareOut, Check, Lock } from '@phosphor-icons/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../lib/auth'
 import { cloudConfigured } from '../../lib/cloud'
+import { IAP_CONFIGURED, buy, getOffer, restore, type IapOffer } from '../../lib/iap'
 import { isNative } from '../../lib/native'
 import { PAYMENT_LINK, PRO_BENEFITS, PRO_PRICE, proUntilLabel, refreshPro, useProState, type ProFeature } from '../../lib/pro'
 import { useApp } from '../AppContext'
@@ -10,13 +11,25 @@ import { Button, SectionLabel, Sheet } from '../ui'
 /**
  * The one place Pro is explained and bought. Opened by any locked feature,
  * which is listed first. Buying happens on the web through a Stripe Payment
- * Link tied to the account; the native app will sell through the App Store.
+ * Link tied to the account, and in the iOS app through the App Store (lib/iap.ts).
  */
 export default function ProSheet({ feature, onClose }: { feature: ProFeature | null; onClose: () => void }) {
   const { setView, toast } = useApp()
   const auth = useAuth()
   const pro = useProState()
   const [checking, setChecking] = useState(false)
+  // The App Store's own price for the pass, loaded when this build sells in-app
+  const [offer, setOffer] = useState<IapOffer | null | undefined>(IAP_CONFIGURED ? undefined : null)
+  useEffect(() => {
+    if (!IAP_CONFIGURED || feature === null || pro.pro) return
+    let on = true
+    getOffer()
+      .then((o) => on && setOffer(o))
+      .catch(() => on && setOffer(null))
+    return () => {
+      on = false
+    }
+  }, [feature, pro.pro])
 
   const ordered = feature && feature !== 'all' ? [...PRO_BENEFITS].sort((a, b) => (a.id === feature ? -1 : b.id === feature ? 1 : 0)) : PRO_BENEFITS
 
@@ -37,15 +50,15 @@ export default function ProSheet({ feature, onClose }: { feature: ProFeature | n
           <div className="rounded-2xl border border-ember-500/30 bg-ember-500/10 p-4">
             <SectionLabel>{pro.source === 'native-preview' ? 'Preview build' : 'Your season pass'}</SectionLabel>
             <div className="mt-1 text-[15px] text-bone-50">{pro.until ? `Pro is on until ${proUntilLabel(pro.until)}.` : 'Everything is unlocked in this build.'}</div>
-            <p className="mt-1 text-[12.5px] text-bone-400">{pro.source === 'native-preview' ? 'Pro will be sold through the App Store when Rutline ships there. Until then, the whole app is yours to test.' : 'Everything below is unlocked on this account, on every phone you sign in on.'}</p>
+            <p className="mt-1 text-[12.5px] text-bone-400">{pro.source === 'native-preview' ? 'Pro will be sold through the App Store when Rutline ships there. Until then, the whole app is yours to test.' : pro.source?.startsWith('app-store') ? 'Bought through the App Store. Sign in and it follows your account to every phone; on a new iPhone, Restore purchases brings it back.' : 'Everything below is unlocked on this account, on every phone you sign in on.'}</p>
           </div>
         ) : (
           <div>
             <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-ember-400">Season pass</div>
             <div className="mt-1 text-[26px] font-semibold tracking-tight leading-tight">
-              {PRO_PRICE} <span className="text-[14px] font-normal text-bone-400">for 12 months</span>
+              {offer?.price ?? PRO_PRICE} <span className="text-[14px] font-normal text-bone-400">{offer?.renews ? 'a year' : 'for 12 months'}</span>
             </div>
-            <p className="mt-1 text-[13px] text-bone-400 leading-relaxed">One payment, no auto-renew. Buy it in August, hunt the whole season, decide again next year. The free app stays free.</p>
+            <p className="mt-1 text-[13px] text-bone-400 leading-relaxed">{offer?.renews ? 'Renews each year through your Apple ID unless you cancel; cancel any time and keep the rest of the year.' : 'One payment, no auto-renew.'} Buy it in August, hunt the whole season, decide again next year. The free app stays free.</p>
           </div>
         )}
 
@@ -66,7 +79,9 @@ export default function ProSheet({ feature, onClose }: { feature: ProFeature | n
 
         {!pro.pro && (
           <div className="space-y-3">
-            {isNative ? (
+            {IAP_CONFIGURED ? (
+              <NativeBuy offer={offer} signedIn={!!auth.user} onDone={onClose} />
+            ) : isNative ? (
               <p className="text-[13px] text-bone-400 leading-relaxed">Pro is coming to this version through the App Store. Everything free works today.</p>
             ) : !cloudConfigured ? (
               <p className="text-[13px] text-bone-400 leading-relaxed">Pro needs an account, and this build has no account service.</p>
@@ -99,5 +114,68 @@ export default function ProSheet({ feature, onClose }: { feature: ProFeature | n
         )}
       </div>
     </Sheet>
+  )
+}
+
+/**
+ * Buy and restore through the App Store. Apple wants the price, the term,
+ * the standard EULA and the privacy policy on the screen that sells an
+ * auto-renewable subscription, so they are all here.
+ */
+function NativeBuy({ offer, signedIn, onDone }: { offer: IapOffer | null | undefined; signedIn: boolean; onDone: () => void }) {
+  const { toast } = useApp()
+  const [busy, setBusy] = useState<'buy' | 'restore' | null>(null)
+
+  async function purchase() {
+    if (!offer) return
+    setBusy('buy')
+    const r = await buy(offer.pkg)
+    if (!r.ok) {
+      setBusy(null)
+      if (!r.cancelled) toast(r.message)
+      return
+    }
+    const s = await refreshPro()
+    setBusy(null)
+    toast(s.pro || r.status.pro ? 'Rutline Pro is on. Thank you.' : 'Purchase received; Pro switches on in a moment')
+    if (s.pro) onDone()
+  }
+
+  async function restoreAll() {
+    setBusy('restore')
+    try {
+      const got = await restore()
+      const s = await refreshPro()
+      toast(got.pro || s.pro ? `Pro is on until ${proUntilLabel(s.until ?? got.until)}` : 'No Pro purchase on this Apple ID')
+      if (s.pro) onDone()
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not reach the App Store')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <>
+      <Button variant="primary" onClick={purchase} disabled={!offer || busy !== null}>
+        {offer === undefined ? 'Checking the App Store…' : offer ? `Buy Pro · ${offer.price}` : 'Not for sale yet'}
+      </Button>
+      <p className="text-[12px] text-bone-600 leading-relaxed">
+        {offer?.renews ? 'Billed to your Apple ID for a year at a time; it renews unless you cancel in Settings › Apple ID › Subscriptions at least a day before the year ends.' : 'Billed once to your Apple ID and good for 12 months.'}{' '}
+        {signedIn ? 'It follows your account to every phone.' : 'Signed out, Pro stays on this phone; sign in and it follows your account.'}
+      </p>
+      <Button variant="ghost" size="sm" onClick={restoreAll} disabled={busy !== null}>
+        <ArrowClockwise size={14} className={busy === 'restore' ? 'animate-spin' : ''} /> Restore purchases
+      </Button>
+      <p className="text-[11.5px] text-bone-600">
+        <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noreferrer" className="underline">
+          Terms of use
+        </a>{' '}
+        ·{' '}
+        <a href="https://jordanyoerger.com/rutline/privacy.html" target="_blank" rel="noreferrer" className="underline">
+          Privacy
+        </a>
+      </p>
+    </>
   )
 }

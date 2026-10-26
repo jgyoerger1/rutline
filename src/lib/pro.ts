@@ -1,14 +1,16 @@
 import { useSyncExternalStore } from 'react'
 import { cloud } from './cloud'
+import { IAP_CONFIGURED, getStatus, identify, onChange } from './iap'
 import { isNative } from './native'
 
 /**
- * The native app has no way to buy Pro until in-app purchase ships, and
- * Apple's reviewers reject locked features with no purchase path, so every
- * native build (TestFlight for now) runs fully unlocked. Flip this off when
- * RevenueCat is wired in.
+ * A native build with no RevenueCat key has no way to buy Pro, and Apple's
+ * reviewers reject locked features with no purchase path, so such a build
+ * (TestFlight before in-app purchase) runs fully unlocked. Once the key is in
+ * the build (repo variable VITE_REVENUECAT_IOS_KEY) Pro is sold in-app and
+ * this switches itself off.
  */
-export const NATIVE_PREVIEW = isNative
+export const NATIVE_PREVIEW = isNative && !IAP_CONFIGURED
 
 /**
  * Rutline Pro. The app is free; Pro is a season pass (12 months) that opens
@@ -98,18 +100,16 @@ export function refreshPro(): Promise<ProState> {
         set({ pro: true, until: Date.now() + 365 * 86400e3, source: 'dev', checkedAt: Date.now() })
         return state
       }
-      if (!cloud) {
-        set({ ...EMPTY, checkedAt: Date.now() })
-        return state
-      }
-      const user = await cloud.getUser()
-      if (!user) {
-        set({ ...EMPTY, checkedAt: Date.now() })
-        return state
-      }
-      const ent = await cloud.getEntitlement()
-      const until = ent?.proUntil ?? null
-      set({ pro: until != null && until > Date.now(), until, source: ent?.source ?? null, checkedAt: Date.now() })
+      // The App Store receipt (through RevenueCat) and the account both count; the later end date wins
+      const store = IAP_CONFIGURED ? await getStatus().catch(() => undefined) : null
+      const user = cloud ? await cloud.getUser() : null
+      const ent = user && cloud ? await cloud.getEntitlement() : null
+      const fromStore = store?.until ? { until: store.until, source: store.sandbox ? 'app-store-sandbox' : 'app-store' } : null
+      const fromAccount = ent?.proUntil ? { until: ent.proUntil, source: ent.source ?? 'account' } : null
+      const best = [fromStore, fromAccount].filter((x): x is { until: number; source: string } => x !== null).sort((a, b) => b.until - a.until)[0] ?? null
+      // Store unreachable and nothing on the account: keep the pass the store granted last time
+      if (!best && store === undefined && state.source?.startsWith('app-store')) return state
+      set({ pro: best !== null && best.until > Date.now(), until: best?.until ?? null, source: best?.source ?? null, checkedAt: Date.now() })
       return state
     } catch {
       // Keep whatever we had; a flaky signal must not lock a paying hunter out in the woods
@@ -128,10 +128,16 @@ export function proUntilLabel(until: number | null): string {
 
 if (typeof window !== 'undefined') {
   void refreshPro()
+  onChange(() => void refreshPro())
   cloud?.onAuthChange((user) => {
     if (NATIVE_PREVIEW) return
-    if (!user) set({ ...EMPTY, checkedAt: Date.now() })
-    else void refreshPro()
+    // The receipt follows the account: signing in merges a purchase made signed out
+    void identify(user?.id ?? null)
+      .catch(() => undefined)
+      .then(() => {
+        if (!user && !IAP_CONFIGURED) set({ ...EMPTY, checkedAt: Date.now() })
+        else void refreshPro()
+      })
   })
   window.setInterval(() => void refreshPro(), 60 * 60 * 1000)
   document.addEventListener('visibilitychange', () => {
