@@ -1,12 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowUp, Check, CrosshairSimple, Footprints, GpsFix, List, Lock, MapPin, Mountains, Path, Pause, Play, Plus, Polygon as ParcelsIcon, Signpost, Trash, TreeEvergreen, X } from '@phosphor-icons/react'
+import { ArrowUp, Check, CloudArrowDown, CrosshairSimple, Footprints, GpsFix, List, Lock, MapPin, Mountains, Path, Pause, Play, Plus, Polygon as ParcelsIcon, Signpost, Trash, TreeEvergreen, X } from '@phosphor-icons/react'
 import L from 'leaflet'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import { addTrail, addWaypoint, deleteTrail, liveTrails, liveWaypoints, updateTrail, updateWaypoint } from '../../lib/db'
 import { degToCompass, fmtDistance, haversineM } from '../../lib/geo'
-import { TRAIL_KINDS, WAYPOINT_ORDER, WAYPOINT_TYPES, type MapLayer, type Trail, type TrailKind, type Waypoint, type WaypointType } from '../../lib/types'
+import { TRAIL_KINDS, WAYPOINT_ORDER, WAYPOINT_TYPES, type Trail, type TrailKind, type Waypoint, type WaypointType } from '../../lib/types'
 import { useWatchPosition } from '../../lib/useGeo'
 import { boundsOf, type Parcel } from '../../lib/parcels'
 import { nowIndex } from '../../lib/weather'
@@ -22,20 +22,13 @@ import PlaceSheet, { type Place } from './PlaceSheet'
 import { UNIT_SOURCES, unitLabel, unitMapLabel } from '../../lib/huntUnits'
 import { overlaysAt } from '../../lib/overlays'
 import { ACCESS_SOURCES, PUBLIC_LEGEND, PUBLIC_SOURCES, accessStyle, describeAccess, describePublic, publicStyle } from '../../lib/publicLand'
+import OfflineSheet from './OfflineSheet'
+import type { BBox } from '../../lib/parcels'
 import ParcelSheet from './ParcelSheet'
 import { rejectDiscovered } from '../../lib/parcelDiscovery'
 import WaypointSheet from './WaypointSheet'
 
-// Esri imagery in a shipped app needs an ArcGIS Location Platform key (the
-// first 2M tiles a month are free). With VITE_ESRI_API_KEY set the keyed
-// endpoint is used; without it, development falls back to the open one.
-const ESRI_KEY = (import.meta.env.VITE_ESRI_API_KEY as string | undefined)?.trim()
-const LAYERS: Record<MapLayer, { url: string; attribution: string; maxNativeZoom: number }> = {
-  satellite: ESRI_KEY
-    ? { url: `https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token=${encodeURIComponent(ESRI_KEY)}`, attribution: 'Powered by Esri · Maxar, Earthstar Geographics', maxNativeZoom: 19 }
-    : { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Imagery © Esri, Maxar, Earthstar Geographics', maxNativeZoom: 19 },
-  topo: { url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', attribution: 'USGS The National Map', maxNativeZoom: 16 },
-}
+import { LAYERS } from '../../lib/basemaps'
 
 const unitStyle = (): L.PathOptions => ({ color: '#f2ede2', weight: 1.6, opacity: 0.75, dashArray: '10 6', fill: false })
 
@@ -79,6 +72,8 @@ export default function MapView({ active }: { active: boolean }) {
   const [addMode, setAddMode] = useState<AddMode>(null)
   const [picker, setPicker] = useState(false)
   const [listOpen, setListOpen] = useState(false)
+  const [offlineOpen, setOfflineOpen] = useState(false)
+  const [offlineBbox, setOfflineBbox] = useState<BBox | null>(null)
   const [filter, setFilter] = useState<Set<WaypointType>>(new Set())
   const [watch, setWatch] = useState(false)
   const [dismissHint, setDismissHint] = useState(false)
@@ -500,6 +495,16 @@ export default function MapView({ active }: { active: boolean }) {
           <List size={20} />
         </IconButton>
         <IconButton
+          label="Offline areas"
+          onClick={() => {
+            const b = mapRef.current?.getBounds()
+            setOfflineBbox(b ? [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()] : null)
+            setOfflineOpen(true)
+          }}
+        >
+          <CloudArrowDown size={20} />
+        </IconButton>
+        <IconButton
           label="My location"
           onClick={() => {
             setWatch(true)
@@ -657,6 +662,7 @@ export default function MapView({ active }: { active: boolean }) {
       </Sheet>
 
       {/* Pins list */}
+      <OfflineSheet open={offlineOpen} onClose={() => setOfflineOpen(false)} bbox={offlineBbox} layer={settings.mapLayer} custom={settings.customParcelSource} onShow={(a) => mapRef.current?.fitBounds(L.latLngBounds([a.bbox[1], a.bbox[0]], [a.bbox[3], a.bbox[2]]), { padding: [20, 20] })} />
       <PinList open={listOpen} onClose={() => setListOpen(false)} waypoints={waypoints ?? []} trails={trails ?? []} me={fix} onPick={(w) => { setListOpen(false); setSelectedId(w.id!); mapRef.current?.flyTo([w.lat, w.lon], Math.max(mapRef.current.getZoom(), 16), { duration: 0.8 }) }} onPickTrail={(t) => { setListOpen(false); setSelectedTrail(t.id!); mapRef.current?.fitBounds(L.latLngBounds(t.points), { padding: [60, 60] }) }} />
 
       <WaypointSheet waypoint={selected} me={fix} windDir={now?.windDir} onClose={() => setSelectedId(null)} onLetter={(t) => setLetter(t)} />

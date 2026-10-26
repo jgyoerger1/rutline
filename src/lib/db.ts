@@ -1,13 +1,16 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { cloud, cloudConfigured } from './cloud'
 import { makeThumb, readExifDate, shrinkImage } from './images'
-import { MAX_TROPHIES, MAX_TROPHY_PHOTOS, type BuckRead, type Photo, type Trail, type Trophy, type TrophyPhoto, type Waypoint, type WaypointType } from './types'
+import type { Parcel } from './parcels'
+import { MAX_TROPHIES, MAX_TROPHY_PHOTOS, type BuckRead, type OfflineArea, type Photo, type Trail, type Trophy, type TrophyPhoto, type Waypoint, type WaypointType } from './types'
 
 class RutlineDB extends Dexie {
   waypoints!: EntityTable<Waypoint, 'id'>
   photos!: EntityTable<Photo, 'id'>
   trails!: EntityTable<Trail, 'id'>
   trophies!: EntityTable<Trophy, 'id'>
+  areas!: EntityTable<OfflineArea, 'id'>
+  offlineParcels!: EntityTable<{ areaId: number; parcels: Parcel[] }, 'areaId'>
 
   constructor() {
     super('rutline')
@@ -79,6 +82,15 @@ class RutlineDB extends Dexie {
       photos: '++id, &uid, waypointId, waypointUid, takenAt, dirty, campId',
       trails: '++id, &uid, kind, updatedAt, dirty, campId',
       trophies: '++id, &uid, status, updatedAt',
+    })
+    // v5: offline areas (tiles live in the service worker cache; parcels here)
+    this.version(5).stores({
+      waypoints: '++id, &uid, type, updatedAt, dirty, campId',
+      photos: '++id, &uid, waypointId, waypointUid, takenAt, dirty, campId',
+      trails: '++id, &uid, kind, updatedAt, dirty, campId',
+      trophies: '++id, &uid, status, updatedAt',
+      areas: '++id, savedAt',
+      offlineParcels: 'areaId',
     })
   }
 }

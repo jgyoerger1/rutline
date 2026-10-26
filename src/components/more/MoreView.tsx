@@ -7,6 +7,8 @@ import { downloadBlob } from '../../lib/useGeo'
 import { useApp } from '../AppContext'
 import HomePicker from '../HomePicker'
 import ProSection from '../pro/ProSection'
+import { AreaList } from '../map/OfflineSheet'
+import { liveAreas } from '../../lib/offline'
 import AccountSection from './AccountSection'
 import CampsSection from './CampsSection'
 import CustomSourceForm from './CustomSourceForm'
@@ -16,6 +18,7 @@ import { Button, Field, Input, SectionLabel, Segmented } from '../ui'
 export default function MoreView() {
   const { settings, setSettings, home, toast, peak } = useApp()
   const counts = useLiveQuery(liveCounts, [])
+  const areas = useLiveQuery(() => liveAreas(), [])
   const [busy, setBusy] = useState<string | null>(null)
   const importRef = useRef<HTMLInputElement>(null)
   const importMode = useRef<'merge' | 'replace'>('merge')
@@ -159,6 +162,10 @@ export default function MoreView() {
                 <Trash size={15} /> Clear this device
               </Button>
             </div>
+          </Section>
+
+          <Section title="Offline areas" body="Map tiles and property lines saved for ground with no signal. Save one from the map with the download button.">
+            {areas && areas.length > 0 ? <AreaList areas={areas} /> : <p className="text-sm text-bone-600">Nothing saved yet.</p>}
           </Section>
 
           <Section title="Rutline Pro" body="The app is free. Pro is a season pass that opens the rest.">

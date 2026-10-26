@@ -65,8 +65,26 @@ export async function renderScoreCard(spec: ScoreCardSpec): Promise<Blob> {
   ctx.fillStyle = BG
   ctx.fillRect(0, 0, W, H)
 
-  // Photo, cover-cropped into the top, fading into the dark block
-  let textTop = 120
+  const pad = 72
+  const fy = H - 130 // footer baseline
+  const TITLE_FONT = '600 64px "Geist Variable", system-ui, sans-serif'
+  const SCORE_FONT = '700 104px "Chakra Petch", "Geist Variable", sans-serif'
+  const DETAIL_FONT = '500 34px "Geist Variable", system-ui, sans-serif'
+  const LINES_FONT = '500 27px "Geist Mono Variable", ui-monospace, monospace'
+
+  // Measure the text block first so it always sits clear of the footer
+  ctx.font = TITLE_FONT
+  const titleLines = wrap(ctx, spec.title, W - pad * 2).slice(0, 2)
+  ctx.font = SCORE_FONT
+  const scoreLines = wrap(ctx, spec.score, W - pad * 2).slice(0, 2)
+  ctx.font = DETAIL_FONT
+  const detailLines = spec.detail ? wrap(ctx, spec.detail, W - pad * 2).slice(0, 2) : []
+  const extraLines = (spec.lines ?? []).slice(0, 4)
+  const blockHeight = 78 + titleLines.length * 72 + 30 + scoreLines.length * 112 + (detailLines.length ? 2 + detailLines.length * 44 : 0) + (extraLines.length ? 26 + extraLines.length * 40 : 0)
+  const textBottomLimit = fy - 100
+  let textTop = Math.min(spec.photo ? 860 : 160, textBottomLimit - blockHeight)
+
+  // Photo, cover-cropped into the top, fading into the dark block above the text
   if (spec.photo) {
     try {
       const bmp = await createImageBitmap(spec.photo, { imageOrientation: 'from-image' })
@@ -76,18 +94,17 @@ export async function renderScoreCard(spec: ScoreCardSpec): Promise<Blob> {
       const dh = bmp.height * k
       ctx.drawImage(bmp, (W - dw) / 2, (ph - dh) / 2, dw, dh)
       bmp.close()
-      const g = ctx.createLinearGradient(0, ph - 420, 0, ph + 1)
+      const fadeTop = Math.min(ph - 420, textTop - 260)
+      const g = ctx.createLinearGradient(0, fadeTop, 0, ph + 1)
       g.addColorStop(0, 'rgba(15,19,17,0)')
       g.addColorStop(1, BG)
       ctx.fillStyle = g
-      ctx.fillRect(0, ph - 420, W, 421)
-      textTop = ph - 40
+      ctx.fillRect(0, fadeTop, W, ph + 1 - fadeTop)
     } catch {
-      /* no photo: typographic card */
+      textTop = Math.min(160, textBottomLimit - blockHeight)
     }
   }
 
-  const pad = 72
   let y = textTop
   ctx.textBaseline = 'alphabetic'
   ctx.fillStyle = EMBER
@@ -98,8 +115,7 @@ export async function renderScoreCard(spec: ScoreCardSpec): Promise<Blob> {
 
   y += 78
   ctx.fillStyle = BONE
-  ctx.font = '600 64px "Geist Variable", system-ui, sans-serif'
-  const titleLines = wrap(ctx, spec.title, W - pad * 2).slice(0, 2)
+  ctx.font = TITLE_FONT
   for (const l of titleLines) {
     ctx.fillText(l, pad, y)
     y += 72
@@ -107,34 +123,32 @@ export async function renderScoreCard(spec: ScoreCardSpec): Promise<Blob> {
 
   y += 30
   ctx.fillStyle = BONE
-  ctx.font = '700 104px "Chakra Petch", "Geist Variable", sans-serif'
-  const scoreLines = wrap(ctx, spec.score, W - pad * 2).slice(0, 2)
+  ctx.font = SCORE_FONT
   for (const l of scoreLines) {
     ctx.fillText(l, pad, y)
     y += 112
   }
 
-  if (spec.detail) {
+  if (detailLines.length) {
     y += 2
     ctx.fillStyle = BONE_2
-    ctx.font = '500 34px "Geist Variable", system-ui, sans-serif'
-    for (const l of wrap(ctx, spec.detail, W - pad * 2).slice(0, 2)) {
+    ctx.font = DETAIL_FONT
+    for (const l of detailLines) {
       ctx.fillText(l, pad, y)
       y += 44
     }
   }
-  if (spec.lines?.length) {
+  if (extraLines.length) {
     y += 26
     ctx.fillStyle = BONE_3
-    ctx.font = '500 27px "Geist Mono Variable", ui-monospace, monospace'
-    for (const l of spec.lines.slice(0, 4)) {
+    ctx.font = LINES_FONT
+    for (const l of extraLines) {
       ctx.fillText(l, pad, y)
       y += 40
     }
   }
 
   // Footer: hairline, mark, wordmark, the line that sells the app
-  const fy = H - 130
   ctx.strokeStyle = 'rgba(242,237,226,0.12)'
   ctx.lineWidth = 2
   ctx.beginPath()

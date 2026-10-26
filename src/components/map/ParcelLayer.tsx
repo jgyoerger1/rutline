@@ -1,6 +1,7 @@
 import L from 'leaflet'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GeoJSON, useMap, useMapEvents } from 'react-leaflet'
+import { offlineParcelsIn } from '../../lib/offline'
 import { countyAt, discoverCounty, type CountyRef } from '../../lib/parcelDiscovery'
 import { fetchParcelsFor, MAX_VIEW_METRES, MIN_PARCEL_ZOOM, namesOwnersFor, sourcesFor, toFeatureCollection, type BBox, type Parcel } from '../../lib/parcels'
 import type { CustomParcelSource } from '../../lib/types'
@@ -70,14 +71,27 @@ export default function ParcelLayer({ enabled, custom, interactive, selectedKey,
       return
     }
     onStatus({ state: 'loading', count: 0, truncated: false, sources: [], county })
+    // No signal, or the county server is down: a saved offline area covers the view
+    const useOffline = async (why: string) => {
+      const saved = await offlineParcelsIn(bbox)
+      if (c.signal.aborted) return false
+      if (!saved.length) return false
+      byKey.current = new Map(saved.map((p) => [p.key, p]))
+      setBatch({ id: Date.now(), parcels: saved })
+      onStatus({ state: 'ready', count: saved.length, truncated: false, sources: ['Saved offline area'], message: why, county })
+      return true
+    }
+    if (!navigator.onLine && (await useOffline('Offline: showing your saved area'))) return
     try {
       const r = await fetchParcelsFor(bbox, custom, c.signal)
       if (c.signal.aborted) return
+      if (!r.parcels.length && r.errors.length && (await useOffline('County server unreachable: showing your saved area'))) return
       byKey.current = new Map(r.parcels.map((p) => [p.key, p]))
       setBatch({ id: Date.now(), parcels: r.parcels })
       onStatus({ state: r.parcels.length ? 'ready' : r.errors.length ? 'error' : 'empty', count: r.parcels.length, truncated: r.truncated, sources: r.sources, message: r.errors[0], county })
     } catch (e) {
       if (c.signal.aborted) return
+      if (await useOffline('County server unreachable: showing your saved area')) return
       onStatus({ state: 'error', count: 0, truncated: false, sources: [], message: e instanceof Error ? e.message : 'Could not load parcels', county })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

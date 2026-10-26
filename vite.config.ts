@@ -47,13 +47,13 @@ export default defineConfig(({ command }) => ({
             options: { cacheName: 'weather', networkTimeoutSeconds: 8, expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 12 } },
           },
           {
-            // Map tiles: keep what you have looked at so your property still renders offline
+            // Map tiles: what you have looked at, plus whole areas saved for offline (src/lib/offline.ts)
             urlPattern: ({ url }) =>
               url.hostname.endsWith('arcgisonline.com') ||
-              url.hostname.endsWith('nationalmap.gov') ||
-              url.hostname.endsWith('openstreetmap.org'),
+              url.hostname === 'ibasemaps-api.arcgis.com' ||
+              url.hostname.endsWith('nationalmap.gov'),
             handler: 'CacheFirst',
-            options: { cacheName: 'tiles', expiration: { maxEntries: 3000, maxAgeSeconds: 60 * 60 * 24 * 60 }, cacheableResponse: { statuses: [0, 200] } },
+            options: { cacheName: 'tiles', expiration: { maxEntries: 20000, maxAgeSeconds: 60 * 60 * 24 * 120 }, cacheableResponse: { statuses: [0, 200] } },
           },
           {
             urlPattern: ({ url }) => url.hostname.endsWith('bigdatacloud.net') || url.hostname === 'geocoding-api.open-meteo.com',

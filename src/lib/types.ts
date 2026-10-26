@@ -290,3 +290,18 @@ export interface Trophy {
 
 export const MAX_TROPHIES = 20
 export const MAX_TROPHY_PHOTOS = 4
+
+// ---------- Offline areas ----------
+
+export interface OfflineArea {
+  id?: number
+  name: string
+  /** west, south, east, north */
+  bbox: [number, number, number, number]
+  layer: MapLayer
+  zooms: [number, number]
+  tiles: number
+  parcels: number
+  mb: number
+  savedAt: number
+}

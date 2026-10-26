@@ -17,7 +17,7 @@ export const NATIVE_PREVIEW = isNative
  * the account (entitlements table, written only by the server), is cached on
  * the device so it holds up offline, and is re-checked on sign-in and hourly.
  */
-export type ProFeature = 'all' | 'terrain' | 'landowner' | 'tracker' | 'huntcast' | 'trophies' | 'guide' | 'camps'
+export type ProFeature = 'all' | 'terrain' | 'landowner' | 'offline' | 'tracker' | 'huntcast' | 'trophies' | 'guide' | 'camps'
 
 export const PRO_PRICE = (import.meta.env.VITE_PRO_PRICE as string | undefined)?.trim() || '$19.99'
 /** Stripe Payment Link for the season pass; empty until Jordan creates one */
@@ -28,6 +28,7 @@ export const FREE_FORECAST_DAYS = 2
 export const PRO_BENEFITS: Array<{ id: ProFeature; title: string; body: string }> = [
   { id: 'terrain', title: 'Slope and 5-foot contours', body: 'The detailed lidar layers: slope steepness and 5-foot contours for benches, saddles and draws. Hillshade stays free.' },
   { id: 'landowner', title: 'Landowner details and permission letters', body: 'Owner of record and mailing address on any parcel, and a permission letter written for you. Property lines stay free.' },
+  { id: 'offline', title: 'Offline areas', body: 'Save the map and the property lines for ground with no signal, at every zoom you use in the woods.' },
   { id: 'tracker', title: 'Unlimited blood tracking', body: 'The blood light runs as long as the trail does. Free gets five minutes a day.' },
   { id: 'huntcast', title: 'The whole week of HuntCast', body: 'Seven days of movement scores and the best hours in each. Free shows today and tomorrow.' },
   { id: 'trophies', title: 'Trophy Center', body: 'Up to twenty bucks with their photos, a rough score and where they show up.' },
