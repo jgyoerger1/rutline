@@ -1,6 +1,7 @@
-import { ArrowCounterClockwise, Camera, Copy, Ruler } from '@phosphor-icons/react'
+import { ArrowCounterClockwise, Camera, Copy, Ruler, ShareNetwork } from '@phosphor-icons/react'
 import { useEffect, useMemo, useState } from 'react'
 import { MEASURES, fmtEighths, scoreSheet, type Sheet } from '../../lib/score'
+import { renderScoreCard, shareImage } from '../../lib/scoreCard'
 import RackMeasure from './RackMeasure'
 import { useApp } from '../AppContext'
 import { Button } from '../ui'
@@ -73,6 +74,26 @@ function ScoreSheet() {
     }
   }
 
+  const [sharing, setSharing] = useState(false)
+  async function shareCard() {
+    setSharing(true)
+    try {
+      const blob = await renderScoreCard({
+        eyebrow: 'Green score · B&C typical',
+        title: sheet.name?.trim() || 'My buck',
+        score: `Gross ${fmtEighths(r.gross)}`,
+        detail: `Net ${fmtEighths(r.net)} · spread ${fmtEighths(r.spread)} · ${fmtEighths(r.diff)} in differences`,
+        lines: [`Left ${fmtEighths(r.L)}   Right ${fmtEighths(r.R)}`, 'Measured by hand, scored in the app'],
+      })
+      const how = await shareImage(blob, 'rutline-score.jpg', `Green score ${fmtEighths(r.gross)} gross, scored with Rutline. jordanyoerger.com/rutline`)
+      toast(how === 'saved' ? 'Score card saved' : 'Score card ready')
+    } catch {
+      toast('Could not make the card on this device')
+    } finally {
+      setSharing(false)
+    }
+  }
+
   const cell = 'h-10 w-full px-2.5 rounded-lg bg-pine-900 border border-bone-50/10 text-bone-50 font-mono text-[13px] tnum outline-none focus:border-ember-500/60 placeholder:text-bone-800'
 
   return (
@@ -95,6 +116,10 @@ function ScoreSheet() {
         ))}
       </div>
 
+      <label className="mt-4 flex flex-col gap-1.5">
+        <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-bone-600">Name on the card</span>
+        <input className={cell} value={sheet.name ?? ''} onChange={(e) => set('name', e.target.value)} placeholder="The ridge 10, Opening day buck" />
+      </label>
       <div className="mt-4 grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1.5">
           <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-bone-600">Inside spread</span>
@@ -142,6 +167,9 @@ function ScoreSheet() {
         </Button>
         <Button variant="secondary" onClick={loadExample}>
           <Ruler size={16} weight="bold" /> Load the example rack
+        </Button>
+        <Button variant="secondary" onClick={shareCard} disabled={!r.any || sharing}>
+          <ShareNetwork size={16} weight="bold" /> {sharing ? 'Making the card' : 'Share score card'}
         </Button>
         <Button variant="secondary" onClick={copy} disabled={!r.any}>
           <Copy size={16} weight="bold" /> Copy score

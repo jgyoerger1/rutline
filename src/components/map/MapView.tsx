@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowUp, Check, CrosshairSimple, GpsFix, List, Lock, MapPin, Mountains, Path, Plus, Polygon as ParcelsIcon, Signpost, Trash, TreeEvergreen, X } from '@phosphor-icons/react'
+import { ArrowUp, Check, CrosshairSimple, Footprints, GpsFix, List, Lock, MapPin, Mountains, Path, Pause, Play, Plus, Polygon as ParcelsIcon, Signpost, Trash, TreeEvergreen, X } from '@phosphor-icons/react'
 import L from 'leaflet'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
@@ -47,6 +47,24 @@ const TRAIL_STYLE: Record<TrailKind, L.PathOptions> = {
   entry: { color: '#d6d0c3', weight: 3, dashArray: '10 7', opacity: 0.9, lineCap: 'round' },
   exit: { color: '#d6d0c3', weight: 3, dashArray: '2 8', opacity: 0.9, lineCap: 'round' },
   drag: { color: '#f5a86b', weight: 5, dashArray: '1 9', opacity: 1, lineCap: 'round' },
+  walk: { color: '#f2ede2', weight: 3, dashArray: '1 6', opacity: 0.85, lineCap: 'round' },
+}
+
+/** A GPS recording in progress */
+interface Recording {
+  points: [number, number][]
+  distance: number
+  startedAt: number
+  paused: boolean
+}
+const MAX_FIX_ACCURACY_M = 40
+const MIN_STEP_M = 2.5
+function fmtElapsed(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`
 }
 
 export default function MapView({ active }: { active: boolean }) {
@@ -74,6 +92,64 @@ export default function MapView({ active }: { active: boolean }) {
   const [parcelReload, setParcelReload] = useState(0)
   const { fix, error: geoError } = useWatchPosition(watch)
   const mapRef = useRef<L.Map | null>(null)
+
+  // Record my walk: GPS fixes become a dotted line while the phone is awake
+  const [rec, setRec] = useState<Recording | null>(null)
+  const [recTick, setRecTick] = useState(0)
+  const wakeLock = useRef<{ release: () => Promise<void> } | null>(null)
+  useEffect(() => {
+    if (!rec || rec.paused || !fix || fix.accuracy > MAX_FIX_ACCURACY_M) return
+    setRec((r) => {
+      if (!r || r.paused) return r
+      const last = r.points[r.points.length - 1]
+      const step = last ? haversineM({ lat: last[0], lon: last[1] }, fix) : 0
+      if (last && step < MIN_STEP_M) return r
+      return { ...r, points: [...r.points, [fix.lat, fix.lon]], distance: r.distance + step }
+    })
+  }, [fix]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!rec) return
+    const id = window.setInterval(() => setRecTick((t) => t + 1), 1000)
+    return () => window.clearInterval(id)
+  }, [!!rec]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // Keep the screen on while recording; the browser pauses GPS when it sleeps
+    const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }
+    const grab = async () => {
+      if (!rec || !nav.wakeLock || document.visibilityState !== 'visible') return
+      try {
+        wakeLock.current = await nav.wakeLock.request('screen')
+      } catch {
+        /* not allowed, carry on */
+      }
+    }
+    void grab()
+    document.addEventListener('visibilitychange', grab)
+    return () => {
+      document.removeEventListener('visibilitychange', grab)
+      void wakeLock.current?.release()
+      wakeLock.current = null
+    }
+  }, [!!rec]) // eslint-disable-line react-hooks/exhaustive-deps
+  function startWalk() {
+    setPicker(false)
+    setAddMode(null)
+    setWatch(true)
+    setRec({ points: fix && fix.accuracy <= MAX_FIX_ACCURACY_M ? [[fix.lat, fix.lon]] : [], distance: 0, startedAt: Date.now(), paused: false })
+    toast(fix ? 'Recording your walk' : 'Recording. Waiting for a GPS fix')
+  }
+  async function finishWalk() {
+    if (!rec) return
+    if (rec.points.length < 2) {
+      toast('Not enough movement to save yet')
+      return
+    }
+    const d = new Date(rec.startedAt)
+    const id = await addTrail({ name: `Walk ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`, kind: 'walk', points: rec.points })
+    setRec(null)
+    setSelectedTrail(id)
+    toast(`Walk saved: ${fmtDistance(rec.distance, settings.units)}`)
+  }
 
   const selected = useMemo(() => waypoints?.find((w) => w.id === selectedId) ?? null, [waypoints, selectedId])
   const now = forecast ? forecast.hours[nowIndex(forecast)] : null
@@ -260,6 +336,7 @@ export default function MapView({ active }: { active: boolean }) {
           )
         })}
 
+        {rec && rec.points.length > 1 && <Polyline positions={rec.points} pathOptions={{ ...TRAIL_STYLE.walk, color: '#f5a86b', weight: 4 }} interactive={false} />}
         {addMode?.kind === 'trail' && addMode.points.length > 0 && (
           <>
             <Polyline positions={addMode.points} pathOptions={{ ...TRAIL_STYLE[addMode.trail], opacity: 0.7 }} />
@@ -441,6 +518,27 @@ export default function MapView({ active }: { active: boolean }) {
 
       {/* Add-mode banner */}
       <AnimatePresence>
+        {rec && !addMode && (
+          <motion.div key="rec" initial={{ y: -12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -12, opacity: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 26 }} className="absolute left-1/2 -translate-x-1/2 bottom-6 z-10 glass rounded-2xl px-4 py-3 flex items-center gap-3 max-w-[calc(100%-7rem)]" role="status" aria-live="polite">
+            <span className="text-sm inline-flex items-center gap-2 whitespace-nowrap">
+              <span className={`w-2 h-2 rounded-full ${rec.paused ? 'bg-bone-600' : 'bg-ember-500 breathe'}`} />
+              <span className="font-mono tnum">{fmtDistance(rec.distance, settings.units)}</span>
+              <span className="text-bone-600">·</span>
+              <span className="font-mono tnum">{fmtElapsed(Date.now() - rec.startedAt + recTick * 0)}</span>
+              {rec.paused && <span className="text-bone-500">paused</span>}
+              {!rec.paused && !rec.points.length && <span className="text-bone-500">waiting for GPS</span>}
+            </span>
+            <Button size="sm" onClick={() => setRec({ ...rec, paused: !rec.paused })} aria-label={rec.paused ? 'Resume recording' : 'Pause recording'}>
+              {rec.paused ? <Play size={14} weight="fill" /> : <Pause size={14} weight="fill" />}
+            </Button>
+            <Button size="sm" variant="primary" onClick={() => void finishWalk()} disabled={rec.points.length < 2}>
+              <Check size={14} /> Save
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setRec(null)} aria-label="Discard recording">
+              <X size={14} />
+            </Button>
+          </motion.div>
+        )}
         {addMode && (
           <motion.div key="banner" initial={{ y: -12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -12, opacity: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 26 }} className="absolute left-1/2 -translate-x-1/2 bottom-6 z-10 glass rounded-2xl px-4 py-3 flex items-center gap-3 max-w-[calc(100%-7rem)]">
             {addMode.kind === 'point' ? (
@@ -516,9 +614,19 @@ export default function MapView({ active }: { active: boolean }) {
           })}
         </div>
         <div className="mt-6">
+          <SectionLabel className="mb-2">Record with GPS</SectionLabel>
+          <button onClick={startWalk} className="push w-full rounded-2xl bg-pine-900 border border-bone-50/8 hover:border-bone-50/20 px-4 py-3 flex items-center gap-3 text-left transition-colors">
+            <Footprints size={20} weight="duotone" className="text-ember-400 shrink-0" />
+            <div>
+              <div className="text-[13px] font-medium">Record my walk</div>
+              <div className="text-[11.5px] text-bone-600">Your route as you move. Keep the phone awake; it saves as a line.</div>
+            </div>
+          </button>
+        </div>
+        <div className="mt-6">
           <SectionLabel className="mb-2">Draw a line</SectionLabel>
           <div className="grid grid-cols-2 gap-2">
-            {(Object.keys(TRAIL_KINDS) as TrailKind[]).map((k) => (
+            {(Object.keys(TRAIL_KINDS) as TrailKind[]).filter((k) => k !== 'walk').map((k) => (
               <button
                 key={k}
                 onClick={() => {

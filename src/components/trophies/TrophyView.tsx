@@ -1,4 +1,5 @@
-import { CaretRight, Crosshair, ImageSquare, Lock, Minus, Plus, Ruler, Sparkle, Trash, Trophy as TrophyIcon, X } from '@phosphor-icons/react'
+import { CaretRight, Crosshair, ImageSquare, Lock, Minus, Plus, Ruler, ShareNetwork, Sparkle, Trash, Trophy as TrophyIcon, X } from '@phosphor-icons/react'
+import { renderScoreCard, shareImage } from '../../lib/scoreCard'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../../lib/auth'
@@ -182,6 +183,7 @@ function TrophySheet({ trophy, onClose }: { trophy: Trophy | null; onClose: () =
   const [judging, setJudging] = useState(false)
   const [tracing, setTracing] = useState(false)
   const [reading, setReading] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const [readError, setReadError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const pins = useLiveQuery(() => liveWaypointsOfTypes(['camera', 'stand', 'blind']), [])
@@ -358,6 +360,38 @@ function TrophySheet({ trophy, onClose }: { trophy: Trophy | null; onClose: () =
                 <Ruler size={15} /> Trace it
               </Button>
             </div>
+            {t.read && photo && (
+              <div className="mt-3 pt-3 border-t border-bone-50/8">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={sharing}
+                  onClick={async () => {
+                    setSharing(true)
+                    try {
+                      const read = t.read!
+                      const age = ageLabel(read.ageClass)
+                      const blob = await renderScoreCard({
+                        photo: photo.blob,
+                        eyebrow: 'Rough green score',
+                        title: t.name,
+                        score: `${read.grossLow} to ${read.grossHigh} gross`,
+                        detail: `${age ? `${age} · ` : ''}${SOURCE_LABEL[read.source]}, ${read.confidence} confidence${read.points ? ` · ${read.points} points` : ''}`,
+                        lines: [t.lastSeen ? `Seen ${new Date(t.lastSeen).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}` : '', 'An estimate from a photo, not a tape'].filter(Boolean),
+                      })
+                      const how = await shareImage(blob, `rutline-${t.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.jpg`, `${t.name}: ${readLine(read)}, scored with Rutline. jordanyoerger.com/rutline`)
+                      toast(how === 'saved' ? 'Score card saved' : 'Score card ready')
+                    } catch {
+                      toast('Could not make the card on this device')
+                    } finally {
+                      setSharing(false)
+                    }
+                  }}
+                >
+                  <ShareNetwork size={15} /> {sharing ? 'Making the card' : 'Share score card'}
+                </Button>
+              </div>
+            )}
             {SHOW_AI_READ && aiNote && <p className="mt-2 text-[12px] text-bone-600">{aiNote}</p>}
             {readError && <p className="mt-2 text-[12.5px] text-ember-400">{readError}</p>}
             {judging && (

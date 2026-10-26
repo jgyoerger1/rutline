@@ -104,13 +104,14 @@ export interface Photo extends SyncMeta {
   height: number
 }
 
-export type TrailKind = 'trail' | 'entry' | 'exit' | 'drag'
+export type TrailKind = 'trail' | 'entry' | 'exit' | 'drag' | 'walk'
 
 export const TRAIL_KINDS: Record<TrailKind, { label: string; hint: string }> = {
   trail: { label: 'Deer trail', hint: 'Travel corridor the deer use' },
   entry: { label: 'Entry route', hint: 'Your way in, quiet and downwind' },
   exit: { label: 'Exit route', hint: 'Your way out after dark' },
   drag: { label: 'Blood trail', hint: 'Recovered track from the tracker' },
+  walk: { label: 'Walked route', hint: 'Recorded with GPS as you moved' },
 }
 
 export interface Trail extends SyncMeta {
