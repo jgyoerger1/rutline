@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rutline Pro subscription image</title>
+<style>
+  @font-face { font-family: 'Chakra Petch'; font-weight: 700; src: url('../node_modules/@fontsource/chakra-petch/files/chakra-petch-latin-700-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Geist Mono'; font-weight: 100 900; src: url('../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2') format('woff2'); }
+  :root { --bg: #0f1311; --bone: #f2ede2; --bone-2: #c9c3b6; --ember: #e8702c; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1024px; height: 1024px; background: var(--bg); overflow: hidden; }
+  .card { position: relative; width: 1024px; height: 1024px; overflow: hidden; background: var(--bg); }
+  /* The antler mark, scaled so the tines fill the top two thirds; the wordmark sliver in the source stays below the fade */
+  .art { position: absolute; left: -58px; top: -36px; width: 1140px; height: 847px; background: url('../public/brand/mark.jpg') center top / 1140px 847px no-repeat; }
+  .fade { position: absolute; inset: 0; background:
+      linear-gradient(180deg, rgba(15,19,17,0) 0px, rgba(15,19,17,0) 560px, rgba(15,19,17,0.9) 690px, var(--bg) 740px),
+      radial-gradient(ellipse at 50% 42%, rgba(15,19,17,0) 55%, rgba(15,19,17,0.55) 100%); }
+  .text { position: absolute; left: 0; right: 0; top: 700px; display: flex; flex-direction: column; align-items: center; }
+  .mark { font: 700 112px/0.9 'Chakra Petch', sans-serif; letter-spacing: 0.03em; color: var(--bone); white-space: nowrap; }
+  .mark b { color: var(--ember); font-weight: 700; }
+  .rule { margin-top: 34px; width: 92px; height: 5px; border-radius: 3px; background: var(--ember); }
+  .tag { margin-top: 30px; font: 600 34px/1 'Geist Mono', monospace; letter-spacing: 0.3em; text-transform: uppercase; color: var(--bone-2); padding-left: 0.3em; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="art"></div>
+    <div class="fade"></div>
+    <div class="text">
+      <div class="mark">RUTLINE <b>PRO</b></div>
+      <div class="rule"></div>
+      <div class="tag">Season pass</div>
+    </div>
+  </div>
+</body>
+</html>
