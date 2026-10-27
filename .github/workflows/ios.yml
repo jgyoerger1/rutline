@@ -39,6 +39,7 @@ env:
   VITE_ESRI_API_KEY: ${{ vars.VITE_ESRI_API_KEY }}
   VITE_PRO_PRICE: ${{ vars.VITE_PRO_PRICE }}
   VITE_REVENUECAT_IOS_KEY: ${{ vars.VITE_REVENUECAT_IOS_KEY }}
+  VITE_PRO_PREVIEW: ${{ vars.VITE_PRO_PREVIEW }}
 
 jobs:
   compile:

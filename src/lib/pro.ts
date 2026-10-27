@@ -11,6 +11,12 @@ import { isNative } from './native'
  * this switches itself off.
  */
 export const NATIVE_PREVIEW = isNative && !IAP_CONFIGURED
+/**
+ * Repo variable VITE_PRO_PREVIEW=1 opens Pro to everyone on every build, web
+ * included, while testers kick the tires. Delete the variable to start selling.
+ */
+export const PRO_PREVIEW = (import.meta.env.VITE_PRO_PREVIEW as string | undefined)?.trim() === '1'
+const UNLOCKED = NATIVE_PREVIEW || PRO_PREVIEW
 
 /**
  * Rutline Pro. The app is free; Pro is a season pass (12 months) that opens
@@ -48,10 +54,10 @@ export interface ProState {
 const KEY = 'rutline.pro.v1'
 const EMPTY: ProState = { pro: false, until: null, source: null, checkedAt: 0 }
 
-const PREVIEW: ProState = { pro: true, until: null, source: 'native-preview', checkedAt: 0 }
+const PREVIEW: ProState = { pro: true, until: null, source: NATIVE_PREVIEW ? 'native-preview' : 'preview', checkedAt: 0 }
 
 function load(): ProState {
-  if (NATIVE_PREVIEW) return PREVIEW
+  if (UNLOCKED) return PREVIEW
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return EMPTY
@@ -92,7 +98,7 @@ export function refreshPro(): Promise<ProState> {
   if (inflight) return inflight
   inflight = (async () => {
     try {
-      if (NATIVE_PREVIEW) {
+      if (UNLOCKED) {
         set({ ...PREVIEW, checkedAt: Date.now() })
         return state
       }
@@ -130,7 +136,7 @@ if (typeof window !== 'undefined') {
   void refreshPro()
   onChange(() => void refreshPro())
   cloud?.onAuthChange((user) => {
-    if (NATIVE_PREVIEW) return
+    if (UNLOCKED) return
     // The receipt follows the account: signing in merges a purchase made signed out
     void identify(user?.id ?? null)
       .catch(() => undefined)

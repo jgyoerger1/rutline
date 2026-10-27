@@ -48,9 +48,9 @@ export default function ProSheet({ feature, onClose }: { feature: ProFeature | n
       <div className="space-y-6">
         {pro.pro ? (
           <div className="rounded-2xl border border-ember-500/30 bg-ember-500/10 p-4">
-            <SectionLabel>{pro.source === 'native-preview' ? 'Preview build' : 'Your season pass'}</SectionLabel>
+            <SectionLabel>{pro.source === 'native-preview' ? 'Preview build' : pro.source === 'preview' ? 'Open while we test' : 'Your season pass'}</SectionLabel>
             <div className="mt-1 text-[15px] text-bone-50">{pro.until ? `Pro is on until ${proUntilLabel(pro.until)}.` : 'Everything is unlocked in this build.'}</div>
-            <p className="mt-1 text-[12.5px] text-bone-400">{pro.source === 'native-preview' ? 'Pro will be sold through the App Store when Rutline ships there. Until then, the whole app is yours to test.' : pro.source?.startsWith('app-store') ? 'Bought through the App Store. Sign in and it follows your account to every phone; on a new iPhone, Restore purchases brings it back.' : 'Everything below is unlocked on this account, on every phone you sign in on.'}</p>
+            <p className="mt-1 text-[12.5px] text-bone-400">{pro.source === 'native-preview' ? 'Pro will be sold through the App Store when Rutline ships there. Until then, the whole app is yours to test.' : pro.source === 'preview' ? 'Pro is open to everyone while Rutline is being tested. It becomes a season pass later; nothing you save goes away.' : pro.source?.startsWith('app-store') ? 'Bought through the App Store. Sign in and it follows your account to every phone; on a new iPhone, Restore purchases brings it back.' : 'Everything below is unlocked on this account, on every phone you sign in on.'}</p>
           </div>
         ) : (
           <div>

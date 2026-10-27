@@ -33,6 +33,7 @@ jobs:
           VITE_ESRI_API_KEY: ${{ vars.VITE_ESRI_API_KEY }}
           VITE_STRIPE_PAYMENT_LINK: ${{ vars.VITE_STRIPE_PAYMENT_LINK }}
           VITE_PRO_PRICE: ${{ vars.VITE_PRO_PRICE }}
+          VITE_PRO_PREVIEW: ${{ vars.VITE_PRO_PREVIEW }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
