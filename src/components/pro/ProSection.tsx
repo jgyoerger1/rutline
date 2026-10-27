@@ -13,7 +13,7 @@ export default function ProSection() {
       <div className="flex-1 min-w-0">
         {s.pro ? (
           <>
-            <div className="text-sm text-bone-50">{s.until ? `Pro is on until ${proUntilLabel(s.until)}.` : 'Everything is unlocked in this preview build.'}</div>
+            <div className="text-sm text-bone-50">{s.until ? `Pro is on until ${proUntilLabel(s.until)}.` : s.source === 'preview' ? 'Pro is open to everyone while Rutline is being tested.' : 'Everything is unlocked in this preview build.'}</div>
             <div className="mt-0.5 text-[12.5px] text-bone-500">Terrain, unlimited tracking, the full week, Trophy Center, the whole guide and camps.</div>
           </>
         ) : (
