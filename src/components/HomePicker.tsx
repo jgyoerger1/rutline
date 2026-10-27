@@ -4,7 +4,7 @@ import { locate, reverseGeocode, searchPlaces, type Place } from '../lib/geo'
 import type { HomeGround } from '../lib/types'
 import { Button, Input } from './ui'
 
-export default function HomePicker({ onPick, compact = false }: { onPick: (home: HomeGround) => void; compact?: boolean }) {
+export default function HomePicker({ onPick, compact = false, gps = true, placeholder = 'Or search a town: Kent, Ohio' }: { onPick: (home: HomeGround) => void; compact?: boolean; gps?: boolean; placeholder?: string }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
@@ -52,13 +52,15 @@ export default function HomePicker({ onPick, compact = false }: { onPick: (home:
 
   return (
     <div className="space-y-3">
-      <Button variant="primary" size={compact ? 'md' : 'lg'} className="w-full" onClick={useGps} disabled={busy}>
-        <GpsFix size={18} weight="bold" />
-        {busy ? 'Getting a fix' : 'Use my location'}
-      </Button>
+      {gps && (
+        <Button variant="primary" size={compact ? 'md' : 'lg'} className="w-full" onClick={useGps} disabled={busy}>
+          <GpsFix size={18} weight="bold" />
+          {busy ? 'Getting a fix' : 'Use my location'}
+        </Button>
+      )}
       <div className="relative">
         <MagnifyingGlass size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-bone-600" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Or search a town: Kent, Ohio" className="pl-10" autoComplete="off" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder} className="pl-10" autoComplete="off" />
       </div>
       {searching && <div className="skeleton h-10" />}
       {!searching && results.length > 0 && (

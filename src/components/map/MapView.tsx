@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowUp, Check, CloudArrowDown, CrosshairSimple, Footprints, GpsFix, List, Lock, MapPin, Mountains, Path, Pause, Play, Plus, Polygon as ParcelsIcon, Signpost, Trash, TreeEvergreen, X } from '@phosphor-icons/react'
+import { ArrowUp, Check, CloudArrowDown, CrosshairSimple, Footprints, GpsFix, List, Lock, MagnifyingGlass, MapPin, Mountains, Path, Pause, Play, Plus, Polygon as ParcelsIcon, Signpost, Trash, TreeEvergreen, X } from '@phosphor-icons/react'
 import L from 'leaflet'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Circle, MapContainer, Marker, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { Circle, CircleMarker, MapContainer, Marker, Polygon, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import { addTrail, addWaypoint, deleteTrail, liveTrails, liveWaypoints, updateTrail, updateWaypoint } from '../../lib/db'
 import { degToCompass, fmtDistance, haversineM } from '../../lib/geo'
 import { TRAIL_KINDS, WAYPOINT_ORDER, WAYPOINT_TYPES, type Trail, type TrailKind, type Waypoint, type WaypointType } from '../../lib/types'
@@ -23,6 +23,7 @@ import { UNIT_SOURCES, unitLabel, unitMapLabel } from '../../lib/huntUnits'
 import { overlaysAt } from '../../lib/overlays'
 import { ACCESS_SOURCES, PUBLIC_LEGEND, PUBLIC_SOURCES, accessStyle, describeAccess, describePublic, publicStyle } from '../../lib/publicLand'
 import OfflineSheet from './OfflineSheet'
+import GoToSheet, { type GoTo } from './GoToSheet'
 import type { BBox } from '../../lib/parcels'
 import ParcelSheet from './ParcelSheet'
 import { rejectDiscovered } from '../../lib/parcelDiscovery'
@@ -73,6 +74,9 @@ export default function MapView({ active }: { active: boolean }) {
   const [picker, setPicker] = useState(false)
   const [listOpen, setListOpen] = useState(false)
   const [offlineOpen, setOfflineOpen] = useState(false)
+  const [gotoOpen, setGotoOpen] = useState(false)
+  // Where the last "Go to" landed; marked until the next one or until it is tapped
+  const [gotoMark, setGotoMark] = useState<GoTo | null>(null)
   const [offlineBbox, setOfflineBbox] = useState<BBox | null>(null)
   const [filter, setFilter] = useState<Set<WaypointType>>(new Set())
   const [watch, setWatch] = useState(false)
@@ -347,12 +351,23 @@ export default function MapView({ active }: { active: boolean }) {
             <Marker position={[fix.lat, fix.lon]} icon={L.divIcon({ className: '', html: '<div class="dw-me"></div>', iconSize: [16, 16], iconAnchor: [8, 8] })} interactive={false} />
           </>
         )}
+        {gotoMark && (
+          <CircleMarker center={[gotoMark.lat, gotoMark.lon]} radius={9} pathOptions={{ color: '#f2ede2', weight: 2, fillColor: '#e8702c', fillOpacity: 0.9 }} eventHandlers={{ click: () => setGotoMark(null) }}>
+            <Tooltip permanent direction="top" offset={[0, -10]} className="goto-tip">
+              {gotoMark.label}
+            </Tooltip>
+          </CircleMarker>
+        )}
       </MapContainer>
       </div>
 
       {/* Top controls */}
       <div className="absolute top-3 left-3 right-3 z-10 flex flex-col gap-2 pointer-events-none">
-      <div className="flex flex-wrap items-start gap-2">
+      {/* One strip: scrolls sideways on a phone, wraps on wider screens */}
+      <div className="flex items-center gap-2 overflow-x-auto no-bar -mx-3 px-3 pb-0.5 pointer-events-auto md:pointer-events-none md:flex-wrap md:items-start md:overflow-visible md:mx-0 md:px-0 md:pb-0">
+        <button onClick={() => setGotoOpen(true)} aria-label="Go to a place" title="Go to a place" className="push order-first md:order-none pointer-events-auto shrink-0 glass rounded-xl h-11 w-11 grid place-items-center text-bone-50">
+          <MagnifyingGlass size={18} weight="bold" />
+        </button>
         {now && (
           <button onClick={() => setView('forecast')} className="push pointer-events-auto shrink-0 whitespace-nowrap glass rounded-xl h-11 px-3 inline-flex items-center gap-2 text-sm">
             <ArrowUp size={16} weight="bold" className="text-ember-400" style={{ transform: `rotate(${now.windDir + 180}deg)` }} />
@@ -440,7 +455,7 @@ export default function MapView({ active }: { active: boolean }) {
             <Lock size={12} /> Slope · 5 ft
           </button>
         )}
-        <div className="ml-auto shrink-0 pointer-events-auto">
+        <div className="order-first md:order-none md:ml-auto shrink-0 pointer-events-auto">
           <Segmented id="layer" value={settings.mapLayer} onChange={(mapLayer) => setSettings({ mapLayer })} options={[{ value: 'satellite', label: 'Sat' }, { value: 'topo', label: 'Topo' }]} className="glass" />
         </div>
       </div>
@@ -663,6 +678,14 @@ export default function MapView({ active }: { active: boolean }) {
 
       {/* Pins list */}
       <OfflineSheet open={offlineOpen} onClose={() => setOfflineOpen(false)} bbox={offlineBbox} layer={settings.mapLayer} custom={settings.customParcelSource} onShow={(a) => mapRef.current?.fitBounds(L.latLngBounds([a.bbox[1], a.bbox[0]], [a.bbox[3], a.bbox[2]]), { padding: [20, 20] })} />
+      <GoToSheet
+        open={gotoOpen}
+        onClose={() => setGotoOpen(false)}
+        onGo={(p) => {
+          setGotoMark(p)
+          mapRef.current?.flyTo([p.lat, p.lon], p.zoom, { duration: 0.9 })
+        }}
+      />
       <PinList open={listOpen} onClose={() => setListOpen(false)} waypoints={waypoints ?? []} trails={trails ?? []} me={fix} onPick={(w) => { setListOpen(false); setSelectedId(w.id!); mapRef.current?.flyTo([w.lat, w.lon], Math.max(mapRef.current.getZoom(), 16), { duration: 0.8 }) }} onPickTrail={(t) => { setListOpen(false); setSelectedTrail(t.id!); mapRef.current?.fitBounds(L.latLngBounds(t.points), { padding: [60, 60] }) }} />
 
       <WaypointSheet waypoint={selected} me={fix} windDir={now?.windDir} onClose={() => setSelectedId(null)} onLetter={(t) => setLetter(t)} />

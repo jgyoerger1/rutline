@@ -87,6 +87,13 @@ export interface Place {
 }
 
 export async function searchPlaces(query: string): Promise<Place[]> {
+  // Pasted coordinates ("41.3745, -81.0565") are a place too
+  const m = query.match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/)
+  if (m) {
+    const lat = Number(m[1])
+    const lon = Number(m[2])
+    if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180) return [{ name: `${lat.toFixed(5)}, ${lon.toFixed(5)}`, lat, lon }]
+  }
   const [namePart, regionPart] = query.split(',').map((s) => s.trim())
   if (!namePart) return []
   const url = new URL('https://geocoding-api.open-meteo.com/v1/search')

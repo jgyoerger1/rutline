@@ -309,3 +309,15 @@ svg[data-open="1"] .fg-anatomy { opacity: 1; }
   text-shadow: 0 0 3px rgba(15, 17, 16, 0.95), 0 0 8px rgba(15, 17, 16, 0.8);
   pointer-events: none;
 }
+
+/* "Go to" landing label on the map */
+.leaflet-tooltip.goto-tip {
+  background: rgba(21, 24, 22, 0.92);
+  color: #f2ede2;
+  border: 1px solid rgba(242, 237, 226, 0.14);
+  border-radius: 8px;
+  padding: 4px 9px;
+  font: 500 12px/1.2 'Geist Variable', 'Geist', sans-serif;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.leaflet-tooltip.goto-tip::before { border-top-color: rgba(21, 24, 22, 0.92); }
