@@ -39,7 +39,8 @@ env:
   VITE_ESRI_API_KEY: ${{ vars.VITE_ESRI_API_KEY }}
   VITE_PRO_PRICE: ${{ vars.VITE_PRO_PRICE }}
   VITE_REVENUECAT_IOS_KEY: ${{ vars.VITE_REVENUECAT_IOS_KEY }}
-  VITE_PRO_PREVIEW: ${{ vars.VITE_PRO_PREVIEW }}
+  # The phone build has its own switch so the web can stay open while TestFlight sells Pro
+  VITE_PRO_PREVIEW: ${{ vars.VITE_PRO_PREVIEW_IOS }}
 
 jobs:
   compile:
