@@ -2,7 +2,7 @@
 //
 // RevenueCat calls this for every subscriber event. When the subscriber is a
 // signed-in Rutline account (the app logs the Supabase user id in as the
-// RevenueCat app user id), the 'pro' entitlement's end date is written to
+// RevenueCat app user id), the 'rutline_pro' entitlement's end date is written to
 // entitlements.pro_until, the same row the Stripe webhook writes, so the web
 // app and every other phone on the account see Pro too. Purchases made while
 // signed out stay on the phone until the hunter signs in.
@@ -16,7 +16,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
-const ENTITLEMENT = 'pro'
+const ENTITLEMENT = 'rutline_pro'
 const PASS_DAYS = 365
 /** Events that start or extend a pass */
 const GRANTS = new Set(['INITIAL_PURCHASE', 'RENEWAL', 'NON_RENEWING_PURCHASE', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'SUBSCRIPTION_EXTENDED', 'TEMPORARY_ENTITLEMENT_GRANT'])

@@ -2,7 +2,7 @@
  * In-app purchase for the App Store build, through RevenueCat. On the web Pro
  * is sold with a Stripe link (pro.ts); Apple requires its own billing inside
  * the app, so the native shell sells the same season pass as a StoreKit
- * product. RevenueCat holds the receipt, grants the 'pro' entitlement and
+ * product. RevenueCat holds the receipt, grants the 'rutline_pro' entitlement and
  * calls our webhook (supabase/functions/revenuecat-webhook) so the account
  * gets the same entitlements row the Stripe webhook writes. Every call here
  * is a no-op in the browser and in a native build with no key.
@@ -13,7 +13,7 @@ import { isNative, platform } from './native'
 const RC_KEY = (import.meta.env.VITE_REVENUECAT_IOS_KEY as string | undefined)?.trim() || ''
 /** True in an iOS build that carries a RevenueCat key: Pro is sold in-app */
 export const IAP_CONFIGURED = isNative && platform === 'ios' && RC_KEY !== ''
-const ENTITLEMENT = 'pro'
+const ENTITLEMENT = 'rutline_pro'
 const PASS_DAYS = 365
 
 export interface IapStatus {
