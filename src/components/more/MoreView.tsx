@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { clearLocal, exportBackup, exportGeoJSON, importBackup, liveCounts } from '../../lib/db'
 import { defaultPeakRut, seasonYear } from '../../lib/rut'
 import { downloadBlob } from '../../lib/useGeo'
+import { isNative } from '../../lib/native'
 import { useApp } from '../AppContext'
 import HomePicker from '../HomePicker'
 import ProSection from '../pro/ProSection'
@@ -172,18 +173,20 @@ export default function MoreView() {
             <ProSection />
           </Section>
 
-          <Section title="Put it on your iPhone" body="Rutline is a web app that installs like a native one: full screen, home-screen icon, works offline on ground you have already looked at.">
-            <ol className="text-sm text-bone-400 space-y-1.5 list-decimal pl-5 leading-relaxed">
-              <li>Open this page in <span className="text-bone-50">Safari</span> (not Chrome).</li>
-              <li>Tap the <span className="text-bone-50">Share</span> button, then <span className="text-bone-50">Add to Home Screen</span>.</li>
-              <li>Open it from the icon. Allow location and camera when asked.</li>
-            </ol>
-            <div className="mt-3 inline-flex items-center gap-2 text-[12px] text-bone-600">
-              <AppleLogo size={14} /> Photos and pins live in the installed app's own storage. Use Backup to move them.
-            </div>
-          </Section>
+          {!isNative && (
+            <Section title="Put it on your iPhone" body="Rutline is a web app that installs like a native one: full screen, home-screen icon, works offline on ground you have already looked at.">
+              <ol className="text-sm text-bone-400 space-y-1.5 list-decimal pl-5 leading-relaxed">
+                <li>Open this page in <span className="text-bone-50">Safari</span> (not Chrome).</li>
+                <li>Tap the <span className="text-bone-50">Share</span> button, then <span className="text-bone-50">Add to Home Screen</span>.</li>
+                <li>Open it from the icon. Allow location and camera when asked.</li>
+              </ol>
+              <div className="mt-3 inline-flex items-center gap-2 text-[12px] text-bone-600">
+                <AppleLogo size={14} /> Photos and pins live in the installed app's own storage. Use Backup to move them.
+              </div>
+            </Section>
+          )}
 
-          <Section title="About" body="Rutline pulls weather from Open-Meteo, imagery from Esri and topo from USGS. Property lines, public land and hunting units come from state and county GIS servers. Your pins stay on your phone unless you sign in; then they sync to your account and to the camps you share them with.">
+          <Section title="About" body="No account needed: pins, photos, trails and settings live on this phone and work with no signal. Sign in to back them up, carry them to another phone and share them into camps. Rutline Pro opens the rest: slope and contours, landowner details and permission letters, offline areas, unlimited blood tracking, the whole week of HuntCast, Trophy Center, the full field guide and camps. Weather comes from Open-Meteo, imagery from Esri, topo and terrain from USGS; property lines, public land and hunting units come from state and county GIS servers.">
             <div className="text-[12px] text-bone-600 font-mono">v{__APP_VERSION__}</div>
           </Section>
         </div>

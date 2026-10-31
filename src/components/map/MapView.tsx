@@ -476,8 +476,9 @@ export default function MapView({ active }: { active: boolean }) {
         </div>
       )}
       {typesPresent.length > 1 && (
-        <div className="overflow-x-auto no-bar -mx-3 px-3">
-          <div className="flex gap-1.5 min-w-max pointer-events-auto pr-4">
+        <div className="overflow-x-auto no-bar -mx-3 px-3 pointer-events-auto touch-pan-x">
+          {/* The scroller itself needs pointer events: iOS will not pan a container that has none, even when its children do */}
+          <div className="flex gap-1.5 min-w-max pr-4">
             <Chip active={filter.size === 0} onClick={() => setFilter(new Set())}>
               All
             </Chip>

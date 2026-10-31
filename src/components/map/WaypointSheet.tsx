@@ -135,7 +135,7 @@ export default function WaypointSheet({ waypoint, me, windDir, onClose, onLetter
           {meta?.hasWinds && (
             <div>
               <SectionLabel>Huntable winds</SectionLabel>
-              <p className="text-[12.5px] text-bone-600 mt-1 mb-2">Tap the directions the wind can blow from and still hunt this spot. The orange tick is the wind right now.</p>
+              <p className="text-[12.5px] text-bone-600 mt-1 mb-2">Tap the directions the wind can blow from and still hunt this spot. The orange arrow is the wind right now: it starts where the wind comes from and points where your scent goes.</p>
               <WindPicker
                 value={winds}
                 onChange={(goodWinds) => {
