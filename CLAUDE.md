@@ -11,8 +11,8 @@ personal contact details. Business case lives in a separate private repo (rutlin
 - Web (PWA): https://jordanyoerger.com/rutline/ — GitHub Pages via Actions (`.github/workflows/deploy.yml`).
   `jgyoerger1.github.io/rutline` redirects there. Privacy/support pages: `public/privacy.html`, `public/support.html`.
 - iOS: Capacitor shell, bundle id `com.jordanyoerger.rutline`, iPhone only. In **TestFlight** (1.0.0 first upload
-  2026-10-25; **1.1.0** uploaded 2026-10-28 with in-app purchase). Not yet submitted to App Store review.
-- Version lives in `package.json` (`1.1.0`); iOS build number = GitHub Actions run number.
+  2026-10-25; 1.1.0 uploaded 2026-10-28 with in-app purchase; **1.1.1** uploaded 2026-10-30). Not yet submitted to App Store review.
+- Version lives in `package.json` (`1.1.1`); iOS build number = GitHub Actions run number.
 
 ## Pricing / tiers
 
