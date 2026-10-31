@@ -1,6 +1,6 @@
 // Renders the native launch screen source (resources/splash.png and
-// splash-dark.png, 2732 x 2732) from tools/splash.html: the app icon alone on
-// the pine background. Then run `npm run ios:assets` to regenerate the iOS set.
+// splash-dark.png, 2732 x 2732) from tools/splash.html: plain pine, because the
+// in-app Splash.tsx stages the mark right after. Then run `npm run ios:assets` to regenerate the iOS set.
 //   node tools/splash.mjs
 import fs from 'node:fs'
 import path from 'node:path'

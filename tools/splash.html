@@ -4,21 +4,14 @@
 <meta charset="utf-8">
 <title>Rutline launch screen</title>
 <style>
-  /* 2732 x 2732 for @capacitor/assets. iOS shows it aspect-fill, so a phone sees the
-     middle ~46% of the width: keep the mark small and dead centre. */
+  /* 2732 x 2732 for @capacitor/assets. Plain pine on purpose: the app's own splash
+     (src/components/Splash.tsx) stages the mark, and a logo here would show twice. */
   * { box-sizing: border-box; margin: 0; }
   html, body { width: 2732px; height: 2732px; background: #0f1110; overflow: hidden; }
   .card { position: relative; width: 2732px; height: 2732px; background: #0f1110; }
-  .icon {
-    position: absolute; left: 50%; top: 50%; width: 440px; height: 440px;
-    transform: translate(-50%, -50%);
-    border-radius: 22.37%; overflow: hidden;
-    box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(242, 237, 226, 0.06);
-    background: url('../resources/icon-only.png') center / cover no-repeat;
-  }
 </style>
 </head>
 <body>
-  <div class="card"><div class="icon"></div></div>
+  <div class="card"></div>
 </body>
 </html>

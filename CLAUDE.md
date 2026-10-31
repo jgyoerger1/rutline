@@ -11,8 +11,8 @@ personal contact details. Business case lives in a separate private repo (rutlin
 - Web (PWA): https://jordanyoerger.com/rutline/ — GitHub Pages via Actions (`.github/workflows/deploy.yml`).
   `jgyoerger1.github.io/rutline` redirects there. Privacy/support pages: `public/privacy.html`, `public/support.html`.
 - iOS: Capacitor shell, bundle id `com.jordanyoerger.rutline`, iPhone only. In **TestFlight** (1.0.0 first upload
-  2026-10-25; 1.1.0 uploaded 2026-10-28 with in-app purchase; 1.1.1 and **1.1.2** uploaded 2026-10-30). Not yet submitted to App Store review.
-- Version lives in `package.json` (`1.1.2`); iOS build number = GitHub Actions run number.
+  2026-10-25; 1.1.0 uploaded 2026-10-28 with in-app purchase; 1.1.1, 1.1.2 and **1.1.3** uploaded 2026-10-30). Not yet submitted to App Store review.
+- Version lives in `package.json` (`1.1.3`); iOS build number = GitHub Actions run number.
 
 ## Pricing / tiers
 
@@ -64,7 +64,7 @@ npm run ios:assets     # regenerate icons/splash from resources/
 node tools/store-shots.mjs   # App Store screenshots 1320x2868 -> store/screenshots/ (dev server running)
 node tools/pro-shot.mjs      # Pro sheet review screenshot -> store/review/ (dev server running)
 node tools/pro-image.mjs     # 1024 subscription image -> store/pro-subscription-1024.png
-node tools/splash.mjs        # launch screen source (app icon alone on pine) -> resources/splash*.png, then npm run ios:assets
+node tools/splash.mjs        # launch screen source (plain pine; Splash.tsx stages the mark) -> resources/splash*.png, then npm run ios:assets
 node tools/og-card.mjs       # link-preview image -> public/brand/og.jpg
 ```
 
