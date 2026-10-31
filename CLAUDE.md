@@ -64,6 +64,7 @@ npm run ios:assets     # regenerate icons/splash from resources/
 node tools/store-shots.mjs   # App Store screenshots 1320x2868 -> store/screenshots/ (dev server running)
 node tools/pro-shot.mjs      # Pro sheet review screenshot -> store/review/ (dev server running)
 node tools/pro-image.mjs     # 1024 subscription image -> store/pro-subscription-1024.png
+node tools/splash.mjs        # launch screen source (app icon alone on pine) -> resources/splash*.png, then npm run ios:assets
 node tools/og-card.mjs       # link-preview image -> public/brand/og.jpg
 ```
 
