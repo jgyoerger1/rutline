@@ -52,6 +52,7 @@ await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }
 const seed = (settings) => {
   localStorage.setItem('rutline.settings.v1', JSON.stringify(settings))
   sessionStorage.setItem('rutline.splash.seen', '1')
+  localStorage.setItem('rutline.pro', '1') // dev-only Pro override (src/lib/pro.ts): the shots show the Pro features
 }
 let init = await page.evaluateOnNewDocument(seed, SETTINGS)
 async function useSettings(settings) {

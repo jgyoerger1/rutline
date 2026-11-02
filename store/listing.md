@@ -1,0 +1,145 @@
+# App Store listing, paste-ready
+
+Every field below is sized for App Store Connect's limit. Copy each block as is.
+Nothing here is private; review credentials and contact details go into App Store Connect only.
+
+## App Information (General → App Information)
+
+**Name** (30 max, 26 used)
+
+```
+Rutline: Deer Hunting Maps
+```
+
+**Subtitle** (30 max, 30 used)
+
+```
+Property lines, wind, rut days
+```
+
+**Primary category**: Sports. **Secondary category**: Navigation.
+
+**Content Rights**: "Yes, it contains, shows or accesses third-party content" and "I have all necessary rights".
+(Esri imagery under its API key terms, USGS and PAD-US are public domain, Open-Meteo is CC BY, county parcel records are public records.)
+
+**Age Rating**: answer None / No to every item. Camps are private, invite-only shared maps, not a public feed,
+so "user-generated content" and "messaging" are No. Result: 4+.
+
+**License Agreement**: keep Apple's standard EULA (the app links to it from the Pro sheet).
+
+## Pricing and Availability
+
+Price: **Free** (Pro is the subscription). Availability: **United States** only for the first release; the
+property, public-land and hunt-unit data are all US sources and the weather labels are in °F and mph.
+
+## Version page (iOS App → 1.x.x → Prepare for Submission)
+
+**Promotional text** (170 max, 166 used; can be changed any time without a review)
+
+```
+Know which stand to sit and why: live wind on every pin, owner-of-record property lines, public land, LiDAR terrain and a daily deer-movement forecast. Free to start.
+```
+
+**Description** (4000 max, about 2,200 used)
+
+```
+Rutline is a whitetail hunting map that tells you which stand to sit and why.
+
+THE MAP
+• Pins for stands, blinds, cameras, scrapes, rubs, beds, food, funnels and more, each with photos and notes.
+• Pick the winds a stand can be hunted in, then see at a glance which stands are right for today's wind.
+• Satellite and USGS topo basemaps, LiDAR hillshade from the USGS 3D Elevation Program, and a search box for any town or coordinates.
+• Property lines with the owner of record from public county records, public land and walk-in areas, and state hunting units.
+• Record trails, entry routes and blood trails as you walk them.
+
+WIND AND WEATHER
+• Live wind for your home ground and the next 48 hours, hour by hour.
+• Pressure trend, temperature and sunrise and sunset with your state's legal light.
+
+HUNTCAST
+• A daily deer-movement forecast built from the rut calendar, cold fronts, pressure, wind and the moon, scored for dawn and dusk.
+
+AFTER THE SHOT
+• Blood light: the camera brightens blood on the ground while you track.
+• A field guide for field dressing, judging a buck on the hoof and scoring the rack, with a score sheet that does the math.
+
+CAMPS
+• Share pins and trails with your hunting partners in a private, invite-only camp.
+
+Pins, trails and photos save on your phone with no account, and work with no signal. Sign in to back them up, carry them to a new phone and share them into camps.
+
+RUTLINE PRO
+Pro unlocks slope and 5-foot contours, landowner details and a written permission letter, offline map areas, unlimited blood light, the full HuntCast forecast, Trophy Center, the whole field guide and camps. Property lines, hillshade and the two-day forecast stay free.
+
+Rutline Pro is an auto-renewing subscription: $19.99 per year, charged to your Apple ID when you confirm the purchase. It renews at the same price unless you cancel at least 24 hours before the year ends. Manage or cancel it any time in Settings › Apple ID › Subscriptions.
+Terms of use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy policy: https://jordanyoerger.com/rutline/privacy.html
+
+Property lines come from public records and are not a survey. Confirm a boundary with the landowner before you hunt it.
+```
+
+**Keywords** (100 max, 99 used; commas, no spaces)
+
+```
+whitetail,buck,rut,scouting,landowner,parcels,public land,topo,lidar,blood,tracking,treestand,score
+```
+
+"Deer", "hunting", "property lines" and "wind" are already in the name and subtitle, which Apple indexes, so they
+are not repeated. No competitor names: Apple rejects trademarks in keywords.
+
+**Support URL**: `https://jordanyoerger.com/rutline/support.html`
+**Marketing URL**: `https://jordanyoerger.com/rutline/`
+**Privacy Policy URL** (under App Privacy): `https://jordanyoerger.com/rutline/privacy.html`
+**Copyright**: `2026 Jordan Yoerger`
+
+**What's New in This Version** (first release)
+
+```
+Rutline's first App Store release.
+
+• Stand map with wind-aware pins, photos, notes and trails
+• Property lines with the owner of record, public land and hunting units
+• LiDAR terrain, satellite and USGS topo
+• Live wind, 48-hour forecast and HuntCast, the daily deer-movement forecast
+• Blood light for tracking after the shot
+• Field guide and rack score sheet
+• Camps for sharing a map with your hunting partners
+```
+
+**Screenshots**: upload the ten PNGs in `store/screenshots/` (1320 × 2868, the 6.9-inch iPhone size) in
+their numbered order. Drag 01-map first; the first three show in search results.
+
+## App Privacy (General → App Privacy)
+
+Click **Get Started**, answer "Yes, we collect data from this app", then add exactly these data types.
+For every one of them: **Linked to the user: Yes. Used for tracking: No. Purpose: App Functionality.**
+
+| Data type | Where it goes |
+|---|---|
+| Contact Info → Email Address | Supabase sign-in |
+| Location → Precise Location | home ground to Open-Meteo and BigDataCloud for weather and a place label; pin coordinates sync to Supabase when signed in |
+| User Content → Photos or Videos | pin photos sync to Supabase storage when signed in |
+| User Content → Other User Content | pins, trails, notes |
+| Identifiers → User ID | Supabase account id, also sent to RevenueCat so Pro follows the account |
+| Purchases → Purchase History | Apple receipt checked by RevenueCat |
+
+Everything else is **Not collected**. Then click **Publish** at the top right; the label goes live with the app.
+
+## App Review Information (bottom of the version page)
+
+- **Sign-in required**: on. Enter the demo account's email and password (create it in the app first, with a
+  couple of pins and a trail saved so sync has something to show).
+- **Contact information**: your name, phone and email. These are private to Apple.
+- **Notes** (paste):
+
+```
+Rutline works with no account: tap "Use without an account on this device" on the sign-in screen and everything except backup, sync and camps is available. The demo account above is signed in to a map with a few pins near Parkman, Ohio.
+
+Rutline Pro is an auto-renewable yearly subscription sold through StoreKit; the sandbox purchase works on the Pro sheet (Settings → Rutline Pro → Buy Pro) and "Restore purchases" is on the same sheet.
+
+Property lines and owner-of-record names come from the same public county parcel services that onX Hunt and HuntStand show. Rutline displays them for the parcel the hunter taps and stores nothing unless the hunter saves a note. It does not look up phone numbers or combine records from other sources.
+
+Location is used only while the app is open, for the map and the home-ground weather. The camera is used for the blood light and pin photos; frames are processed on the device.
+```
+
+**Version Release**: choose **Manually release this version**, so approval does not put it live before you are ready.

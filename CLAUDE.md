@@ -46,7 +46,7 @@ Dexie (IndexedDB) + SunCalc + vite-plugin-pwa; Supabase (optional backend); Capa
   `supabase/functions/{stripe-webhook,revenuecat-webhook,score-buck}`, `supabase/README.md` (full setup §1-§9).
 - `ios/` Xcode project (committed, ~18 MB), `resources/` icon/splash sources, `fastlane/` (TestFlight lane),
   `scripts/build-native.mjs`, `tools/` (headless-Chrome image generators), `store/` (App Store screenshots/art),
-  `assets/` (brand collateral .webp sources), `docs/app-store.md` (Apple setup + review notes).
+  `assets/` (brand collateral .webp sources), `docs/app-store.md` (Apple setup + submission), `docs/google-play.md` (Android plan), `store/listing.md` (paste-ready listing).
 
 ## Commands (verified against package.json / workflows)
 

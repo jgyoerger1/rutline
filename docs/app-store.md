@@ -93,19 +93,63 @@ Actions → **iOS app** → Run workflow → tick **Upload to TestFlight** → R
 
 Test on the phone before submitting: location, the blood camera, a photo on a pin, sign-in and sync, property lines, and the rack tracer.
 
-## 8. App Review
+## 8. Submitting to the App Store
 
-In App Store Connect fill in the listing:
+Four things gate the submission, and all four are account steps only Jordan can do. Do them in this order;
+the first one needs a fresh build afterwards.
 
-- **Screenshots**: the 1320 × 2868 PNGs in `store/screenshots/`, up to ten. Only the 6.9-inch iPhone set is required; the app is iPhone-only so no iPad set is needed.
-- **Description and keywords**: deer hunting, property lines, public land, hunting units, wind, rut forecast, blood tracking, deer score.
-- **Support URL**: `https://jordanyoerger.com/rutline/support.html`. **Privacy policy URL**: `https://jordanyoerger.com/rutline/privacy.html`.
-- **App Privacy questionnaire**: declare email address, precise location, photos and user content (pins, trails, notes). All linked to the user, used for app functionality only, no tracking, no advertising, no analytics.
-- **Age rating**: no restricted content. Hunting is fine.
-- **Review notes**: create a demo account yourself and give its email and password here, and note that reviewers can also tap "Use without an account on this device". Add this paragraph so the landowner feature is not misread: *"Property lines and owner-of-record names come from the same public county parcel services that onX Hunt and HuntStand show. Rutline displays them for the parcel the hunter taps and stores nothing unless the hunter saves a note. It does not look up phone numbers or combine records from other sources."*
-- Pick the TestFlight build, submit. First reviews take one to three days.
+1. **Esri key** ("Before the first build" above). The iOS build bakes `VITE_ESRI_API_KEY` in at build time, so
+   once the variable exists, bump the version and run one more TestFlight upload. That build is the one to submit.
+2. **Sign-up and password-reset email.** Supabase's built-in mailer delivers only to the project's own team
+   members, so a stranger who signs up or taps "Forgot password" gets nothing. Connect Resend (free up to
+   3,000 emails a month):
+   1. https://resend.com → sign up → **Domains → Add domain** → `jordanyoerger.com` → add the DNS records it
+      shows (a DKIM TXT record and MX + TXT for the bounce subdomain) where the domain's DNS lives → wait for
+      **Verified**.
+   2. Resend → **API Keys → Create API key** → name it `Supabase`, permission *Sending access* → copy the key.
+   3. Supabase dashboard → the project → **Authentication → Emails → SMTP Settings** (older layout: Project
+      Settings → Authentication → SMTP) → **Enable Custom SMTP**: Sender email `rutline@jordanyoerger.com`,
+      Sender name `Rutline`, Host `smtp.resend.com`, Port `465`, Username `resend`, Password = the API key →
+      Save.
+   4. **Authentication → Rate Limits** → raise *Rate limit for sending emails* from 2 an hour to about 30.
+   5. **Authentication → Sign In / Providers → Email** → leave **Confirm email** on; real users receive it now.
+   Test it: sign up in the web app with an address you own and make sure the confirmation lands.
+3. **Demo account for the reviewer.** In the app, create an account with an address you control (a
+   plus-address such as `you+review@...` is fine), confirm it, and save three or four pins and a trail near
+   your home ground. Its email and password go into App Store Connect's review section only, never the repo.
+4. **Support contact.** `public/support.html` points at GitHub issues. Reviewers accept that, but an email
+   address on the page is safer and friendlier. If you want one, pick an alias that forwards to you (an address
+   on jordanyoerger.com, not your personal mailbox) and it goes on the page.
 
-Two things reviewers check for sign-in apps: account deletion inside the app (done) and, if you ever add Google sign-in, Sign in with Apple alongside it.
+Then App Store Connect, top to bottom. The text for every field is in `store/listing.md`.
+
+1. **App Information** (left sidebar, under General): Name, Subtitle, Primary and Secondary category, Content
+   Rights, then **Age Rating → Edit**, answer the questionnaire, Done. **Save** at the top right.
+2. **Pricing and Availability**: Price Schedule → **Free**; Availability → Edit → **United States** only. Save.
+3. **App Privacy**: Privacy Policy URL, then **Get Started** → the data types listed in `store/listing.md` →
+   **Publish**.
+4. **Subscriptions** (under Monetization): open the Rutline Pro group → Rutline Pro must read **Ready to
+   Submit**. If it says *Missing Metadata*, open it: a localization (display name and description), a price,
+   and under Review Information the screenshot `store/review/pro-sheet.png` with its note. Save.
+5. **iOS App → the version → Prepare for Submission** (the version string must equal `package.json`):
+   drag the ten screenshots into the **6.9-inch** slot; Promotional Text, Description, Keywords, Support URL,
+   Marketing URL; **Build → + → the latest build** (the one with the Esri key); **In-App Purchases and
+   Subscriptions → + → Rutline Pro** (a subscription is only reviewed alongside a version, and the first one
+   has to ride with the first submission); Copyright; **App Review Information**: Sign-in required → the demo
+   email and password, your contact name, phone and email, and the Notes from `store/listing.md`;
+   **Version Release → Manually release this version**. Save.
+6. Top right **Add for Review** → clear any red items it lists → **Submit to App Review**. Status goes
+   *Waiting for Review* → *In Review* → *Ready for Distribution*, usually within one to three days. A rejection
+   arrives in the Resolution Center with a message; most first-round rejections ask for a clarification or a
+   metadata change, not a rebuild. Reply there.
+7. On approval: iOS App → **Release This Version**. The subscription goes live with it, and the listing is
+   searchable within about a day.
+
+After approval, two loose ends: the web keeps `VITE_PRO_PREVIEW=1` until the Stripe link exists
+(`supabase/README.md` §8), which does not touch the App Store version; and in App Store Connect → App
+Information → **App Store Server Notifications**, paste the URL RevenueCat shows under Project → Apps → App
+Store → *Apple Server to Server notification URL* into both Production and Sandbox, so cancellations and
+renewals reach the webhook within minutes instead of at the next app launch.
 
 ## Rutline Pro in the native app
 
@@ -131,4 +175,4 @@ Bump `version` in `package.json`, push, run the workflow with upload ticked. The
 
 - Invite links (`#/join/CODE`) open the website, not the app, until universal links are configured. The app also answers `rutline://join/CODE`. Pasting the code in Settings → Camps works everywhere.
 - The camera torch is not controllable from the WebView; use a flashlight for night tracking.
-- Android: Capacitor can add it with `npx cap add android`; a Play build needs a signing keystore and the Play Console ($25 once). New personal Play accounts must keep 12 opted-in testers for 14 straight days before an app can go to production; an organization account (needs a D-U-N-S number) skips that. Say the word when you want it.
+- Android: the plan, prerequisites and click paths are in `docs/google-play.md`.
