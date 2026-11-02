@@ -11,8 +11,8 @@ personal contact details. Business case lives in a separate private repo (rutlin
 - Web (PWA): https://jordanyoerger.com/rutline/ — GitHub Pages via Actions (`.github/workflows/deploy.yml`).
   `jgyoerger1.github.io/rutline` redirects there. Privacy/support pages: `public/privacy.html`, `public/support.html`.
 - iOS: Capacitor shell, bundle id `com.jordanyoerger.rutline`, iPhone only. In **TestFlight** (1.0.0 first upload
-  2026-10-25; 1.1.0 uploaded 2026-10-28 with in-app purchase; 1.1.1, 1.1.2 and 1.1.3 uploaded 2026-10-30; **1.1.4** uploaded 2026-11-01). Not yet submitted to App Store review.
-- Version lives in `package.json` (`1.1.4`); iOS build number = GitHub Actions run number.
+  2026-10-25; 1.1.0 uploaded 2026-10-28 with in-app purchase; 1.1.1, 1.1.2 and 1.1.3 uploaded 2026-10-30; 1.1.4 and **1.1.5** (first build with the Esri key) uploaded 2026-11-01). Not yet submitted to App Store review.
+- Version lives in `package.json` (`1.1.5`); iOS build number = GitHub Actions run number.
 
 ## Pricing / tiers
 
@@ -156,7 +156,7 @@ cache 30 d hit / 7 d miss), `huntUnits.ts` (39 states + OH/IN county regulation 
 - Jordan: sandbox purchase of Pro on the 1.1.0 TestFlight build; "Not for sale yet" = Paid Apps agreement not Active.
 - Before App Store submission: Paid Apps agreement, review notes + demo account (text in `docs/app-store.md` §8),
   decide when to drop `VITE_PRO_PREVIEW` on the web, Supabase email confirmation off or custom SMTP, Esri
-  `VITE_ESRI_API_KEY` repo variable (ArcGIS Location Platform key) if not yet set, Stripe product/link/webhook for web sales.
+  Stripe product/link/webhook for web sales. `VITE_ESRI_API_KEY` is set (ArcGIS Location Platform, expires 2027-11; the key must be regenerated and rebuilt before then).
 - Known gap: an iOS purchase made while signed out reaches the account row only on the next renewal.
 - Universal links not configured (invite links `#/join/CODE` open the website; app answers `rutline://join/CODE`).
 - Ideas not built: hunt log / sightings calibration, Leaflet chunk splitting (main bundle large), vector antler mark,
