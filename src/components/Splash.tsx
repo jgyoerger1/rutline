@@ -85,9 +85,10 @@ export default function Splash() {
             />
           </svg>
 
-          {/* Antler mark: blur to focus, feathered into the field */}
+          {/* Antler mark: blur to focus, feathered into the field. The file ends in the top sliver of the
+              lockup wordmark, so the frame is a touch shorter than the image and anchored to the top. */}
           <motion.div
-            className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 w-[min(84vw,62vh)] aspect-[700/520] pointer-events-none"
+            className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 w-[min(84vw,62vh)] aspect-[700/508] pointer-events-none"
             initial={{ opacity: 0, scale: 1.14, filter: 'blur(22px)', y: 18 }}
             animate={{ opacity: 1, scale: 1, filter: 'blur(0px)', y: 0 }}
             transition={{ duration: 1.4, delay: 0.55, ease: EXPO }}
@@ -96,7 +97,7 @@ export default function Splash() {
             <img
               src="brand/mark.jpg"
               alt=""
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover object-top"
               style={{ WebkitMaskImage: 'radial-gradient(ellipse 58% 60% at 50% 55%, #000 48%, transparent 90%)', maskImage: 'radial-gradient(ellipse 58% 60% at 50% 55%, #000 48%, transparent 90%)' }}
               draggable={false}
             />

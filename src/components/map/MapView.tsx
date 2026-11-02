@@ -440,8 +440,8 @@ export default function MapView({ active }: { active: boolean }) {
           {terrainOn && (
             <span className="font-mono text-[11px] text-bone-400 tnum inline-flex items-center gap-1.5">
               <span className="md:hidden text-bone-50">{terrainMode === 'hillshade' ? 'shade' : terrainMode === 'slope' ? 'slope' : '5 ft'}</span>
-              {terrainStatus === 'loading' && <span className="w-1.5 h-1.5 rounded-full bg-ember-400 breathe" />}
-              {terrainStatus === 'zoom' ? 'zoom in' : terrainStatus === 'error' ? 'offline' : ''}
+              {(terrainStatus === 'loading' || terrainStatus === 'retry') && <span className="w-1.5 h-1.5 rounded-full bg-ember-400 breathe" />}
+              {terrainStatus === 'zoom' ? 'zoom in' : terrainStatus === 'retry' ? 'retrying' : terrainStatus === 'offline' ? 'offline' : terrainStatus === 'error' ? 'server down' : ''}
             </span>
           )}
         </button>

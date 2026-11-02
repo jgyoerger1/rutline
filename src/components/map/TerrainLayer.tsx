@@ -8,18 +8,25 @@
  * about a second. The previous image stays up until the new one has loaded,
  * then crossfades. The image sits in its own pane and multiplies onto the
  * basemap, so flat ground is untouched and relief darkens it.
+ *
+ * The USGS renderer drops requests now and then (a 500, a JSON error body
+ * with a 200, or a hang), so a failed export retries three times with a
+ * growing wait before the chip calls the server down. No signal is reported
+ * separately, and the next move or the connection coming back starts over.
  */
 import L from 'leaflet'
 import { useEffect } from 'react'
 import { useMap } from 'react-leaflet'
 import type { TerrainMode } from '../../lib/types'
 
-export type TerrainState = 'off' | 'zoom' | 'loading' | 'ready' | 'error'
+export type TerrainState = 'off' | 'zoom' | 'loading' | 'ready' | 'retry' | 'offline' | 'error'
 
 const SERVICE = 'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage'
 export const MIN_TERRAIN_ZOOM = 10
 const MAX_PX = 2048
 const PAD = 0.12
+const RETRY_WAITS = [1500, 4000, 10000]
+const ATTEMPT_TIMEOUT = 30000
 
 const FUNCTION: Record<TerrainMode, string> = {
   hillshade: 'Hillshade Multidirectional',
@@ -57,6 +64,8 @@ export default function TerrainLayer({ enabled, mode, onStatus }: { enabled: boo
     let currentUrl: string | null = null
     let ctl: AbortController | null = null
     let timer: number | null = null
+    let retryTimer: number | null = null
+    let attempt = 0
     let disposed = false
 
     const drop = () => {
@@ -66,8 +75,34 @@ export default function TerrainLayer({ enabled, mode, onStatus }: { enabled: boo
       currentUrl = null
     }
 
-    const render = async () => {
+    const clearRetry = () => {
+      if (retryTimer) window.clearTimeout(retryTimer)
+      retryTimer = null
+    }
+
+    // A failed attempt: no signal is its own state; otherwise wait and try again,
+    // and only after the last wait admit the server is not answering.
+    const failed = (mine: AbortController) => {
+      if (disposed || ctl !== mine) return
+      if (navigator.onLine === false) {
+        onStatus('offline')
+        return
+      }
+      const wait = RETRY_WAITS[attempt]
+      if (wait === undefined) {
+        onStatus('error')
+        return
+      }
+      attempt++
+      onStatus('retry')
+      clearRetry()
+      retryTimer = window.setTimeout(() => void render(false), wait)
+    }
+
+    const render = async (fresh = true) => {
       if (disposed) return
+      if (fresh) attempt = 0
+      clearRetry()
       if (map.getZoom() < MIN_TERRAIN_ZOOM) {
         ctl?.abort()
         drop()
@@ -77,6 +112,11 @@ export default function TerrainLayer({ enabled, mode, onStatus }: { enabled: boo
       ctl?.abort()
       const mine = new AbortController()
       ctl = mine
+      let timedOut = false
+      const watchdog = window.setTimeout(() => {
+        timedOut = true
+        mine.abort()
+      }, ATTEMPT_TIMEOUT)
       const bounds = map.getBounds().pad(PAD)
       const size = map.getSize()
       const dpr = Math.min(2, window.devicePixelRatio || 1)
@@ -85,7 +125,7 @@ export default function TerrainLayer({ enabled, mode, onStatus }: { enabled: boo
       const k = Math.min(1, MAX_PX / Math.max(w, h))
       w = Math.max(64, Math.round(w * k))
       h = Math.max(64, Math.round(h * k))
-      onStatus('loading')
+      onStatus(fresh ? 'loading' : 'retry')
       try {
         const res = await fetch(terrainUrl(bounds, w, h, mode), { signal: mine.signal })
         if (!res.ok || !(res.headers.get('content-type') ?? '').startsWith('image/')) throw new Error(`terrain ${res.status}`)
@@ -108,12 +148,15 @@ export default function TerrainLayer({ enabled, mode, onStatus }: { enabled: boo
         next.once('error', () => {
           next.remove()
           URL.revokeObjectURL(url)
-          if (!mine.signal.aborted && !disposed) onStatus('error')
+          failed(mine)
         })
         next.addTo(map)
       } catch (e) {
-        if ((e as Error).name === 'AbortError' || disposed) return
-        onStatus('error')
+        if (disposed) return
+        if ((e as Error).name === 'AbortError' && !timedOut) return
+        failed(mine)
+      } finally {
+        window.clearTimeout(watchdog)
       }
     }
 
@@ -122,11 +165,14 @@ export default function TerrainLayer({ enabled, mode, onStatus }: { enabled: boo
       timer = window.setTimeout(() => void render(), 280)
     }
     map.on('moveend', schedule)
+    window.addEventListener('online', schedule)
     void render()
     return () => {
       disposed = true
       map.off('moveend', schedule)
+      window.removeEventListener('online', schedule)
       if (timer) window.clearTimeout(timer)
+      clearRetry()
       ctl?.abort()
       drop()
     }
