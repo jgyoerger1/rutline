@@ -409,13 +409,17 @@ function Labels({ scene }: { scene: Scene }) {
       )
     case 'total':
     case 'outro':
+      // Hidden on phones: the short stage puts this caption under the step label
+      // (seen at 360 x 640), and the sheet below the stage carries the same totals
       return (
-        <text x={500} y={108} textAnchor="middle" fontSize="0.82em">
-          <tspan x={500}>L 68 4/8 · R 67 2/8 · spread 17 4/8 · abnormal 1 4/8</tspan>
-          <tspan x={500} dy="1.3em" fill={BONE}>
-            Gross 154 6/8 · net 150 0/8
-          </tspan>
-        </text>
+        <g className="hidden md:block">
+          <text x={500} y={108} textAnchor="middle" fontSize="0.82em">
+            <tspan x={500}>L 68 4/8 · R 67 2/8 · spread 17 4/8 · abnormal 1 4/8</tspan>
+            <tspan x={500} dy="1.3em" fill={BONE}>
+              Gross 154 6/8 · net 150 0/8
+            </tspan>
+          </text>
+        </g>
       )
     default:
       return null

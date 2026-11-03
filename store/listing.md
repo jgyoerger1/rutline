@@ -143,3 +143,78 @@ Location is used only while the app is open, for the map and the home-ground wea
 ```
 
 **Version Release**: choose **Manually release this version**, so approval does not put it live before you are ready.
+
+## Google Play (Play Console → Grow → Store presence → Main store listing)
+
+Same app, Google's limits. Graphics live in `store/play/` (`node tools/play-shots.mjs` and
+`node tools/feature-graphic.mjs` regenerate them with the dev server running).
+
+**App name** (30 max, 26 used): `Rutline: Deer Hunting Maps`
+
+**Short description** (80 max, 80 used)
+
+```
+Property lines, landowners, wind-aware stands, LiDAR terrain and a rut forecast.
+```
+
+**Full description** (4000 max, about 2,150 used). The Apple description with Google's billing wording; Play
+has no EULA link and the privacy policy is a separate field.
+
+```
+Rutline is a whitetail hunting map that tells you which stand to sit and why.
+
+THE MAP
+• Pins for stands, blinds, cameras, scrapes, rubs, beds, food, funnels and more, each with photos and notes.
+• Pick the winds a stand can be hunted in, then see at a glance which stands are right for today's wind.
+• Satellite and USGS topo basemaps, LiDAR hillshade from the USGS 3D Elevation Program, and a search box for any town or coordinates.
+• Property lines with the owner of record from public county records, public land and walk-in areas, and state hunting units.
+• Record trails, entry routes and blood trails as you walk them.
+
+WIND AND WEATHER
+• Live wind for your home ground and the next 48 hours, hour by hour.
+• Pressure trend, temperature and sunrise and sunset with your state's legal light.
+
+HUNTCAST
+• A daily deer-movement forecast built from the rut calendar, cold fronts, pressure, wind and the moon, scored for dawn and dusk.
+
+AFTER THE SHOT
+• Blood light: the camera brightens blood on the ground while you track.
+• A field guide for field dressing, judging a buck on the hoof and scoring the rack, with a score sheet that does the math.
+
+CAMPS
+• Share pins and trails with your hunting partners in a private, invite-only camp.
+
+Pins, trails and photos save on your phone with no account, and work with no signal. Sign in to back them up, carry them to a new phone and share them into camps.
+
+RUTLINE PRO
+Pro unlocks slope and 5-foot contours, landowner details and a written permission letter, offline map areas, unlimited blood light, the full HuntCast forecast, Trophy Center, the whole field guide and camps. Property lines, hillshade and the two-day forecast stay free.
+
+Rutline Pro is an auto-renewing subscription: $19.99 per year, charged to your Google account when you confirm the purchase. It renews at the same price unless you cancel at least 24 hours before the year ends. Manage or cancel it any time in the Play Store app under Payments and subscriptions.
+
+Property lines come from public records and are not a survey. Confirm a boundary with the landowner before you hunt it.
+```
+
+**Graphics**: app icon `store/play/icon-512.png` (512 × 512), feature graphic `store/play/feature-graphic.png`
+(1024 × 500), phone screenshots `store/play/01-map.png` … `09-lidar-terrain.png` (1080 × 1920, 9:16; Play takes
+two to eight, so drop 06 if you want exactly eight). Upload 01-map first.
+
+**Category**: Application, **Sports**. **Tags**: Hunting, Maps & Navigation. **Contact email**: required and shown
+to the public on the listing, so use an alias on jordanyoerger.com, not a personal mailbox.
+**Privacy policy** (App content → Privacy policy): `https://jordanyoerger.com/rutline/privacy.html`
+
+**App content questionnaire** (the "Set up your app" checklist):
+
+- **App access**: "All or some functionality is restricted" → add the demo account's email and password with the
+  note "Tap 'Use without an account on this device' to skip sign-in; the account shows sync and camps."
+- **Ads**: No.
+- **Content rating**: IARC. Category "Utility, Productivity, Communication, or Other". Answer No throughout: the
+  blood light shows the phone's own camera, not depicted violence. Result: Everyone.
+- **Target audience**: 18 and over only (keeps the app out of the Families policy).
+- **News app**: No. **COVID-19 contact tracing**: No. **Government app**: No. **Financial features**: No.
+  **Health**: No.
+- **Data safety**: Yes, collects data. Same six types as the Apple label, all "Collected", not shared, encrypted
+  in transit, deletable (Settings → account → delete), purpose App functionality:
+  Personal info → Email address · Location → Precise location (optional: the app works without it) ·
+  Photos and videos → Photos · App activity → Other user-generated content (pins, trails, notes) ·
+  App info and performance: none · Device or other IDs: none · Purchase history (under Financial info) · User IDs
+  (under Personal info → User IDs). Nothing is used for advertising or analytics.
