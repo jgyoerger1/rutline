@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Plain pine launch background, like the iOS launch screen: the in-app splash
+     (src/components/Splash.tsx) draws the lockup, so nothing is shown twice. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#0f1110" />
+</shape>

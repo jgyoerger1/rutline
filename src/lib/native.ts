@@ -59,6 +59,15 @@ export async function initNative(onOpenUrl: (url: string) => void): Promise<void
     /* ignore */
   }
   void CapApp.addListener('appUrlOpen', ({ url }) => onOpenUrl(url))
+  if (platform === 'android') {
+    // Hardware back: an open sheet closes (components/ui.tsx), then a non-map view
+    // returns to the map (App.tsx), then the app goes to the background
+    void CapApp.addListener('backButton', () => {
+      const ev = new Event('rutline:back', { cancelable: true })
+      window.dispatchEvent(ev)
+      if (!ev.defaultPrevented) void CapApp.minimizeApp()
+    })
+  }
   try {
     await SplashScreen.hide({ fadeOutDuration: 300 })
   } catch {

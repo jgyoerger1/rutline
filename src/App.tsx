@@ -116,7 +116,18 @@ export default function App() {
     })
     const onHash = () => setViewState(readHash())
     window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
+    // Android back button, after the open sheet has had its turn (components/ui.tsx):
+    // any other tab goes back to the map; on the map, lib/native.ts backgrounds the app
+    const onBack = (e: Event) => {
+      if (e.defaultPrevented || readHash() === 'map') return
+      e.preventDefault()
+      setView('map')
+    }
+    window.addEventListener('rutline:back', onBack)
+    return () => {
+      window.removeEventListener('hashchange', onHash)
+      window.removeEventListener('rutline:back', onBack)
+    }
   }, [])
 
   const setView = useCallback((v: View) => {

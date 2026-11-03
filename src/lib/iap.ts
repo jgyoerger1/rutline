@@ -1,18 +1,25 @@
 /**
- * In-app purchase for the App Store build, through RevenueCat. On the web Pro
- * is sold with a Stripe link (pro.ts); Apple requires its own billing inside
- * the app, so the native shell sells the same season pass as a StoreKit
- * product. RevenueCat holds the receipt, grants the 'rutline_pro' entitlement and
- * calls our webhook (supabase/functions/revenuecat-webhook) so the account
- * gets the same entitlements row the Stripe webhook writes. Every call here
- * is a no-op in the browser and in a native build with no key.
+ * In-app purchase for the App Store and Google Play builds, through RevenueCat.
+ * On the web Pro is sold with a Stripe link (pro.ts); Apple and Google require
+ * their own billing inside the app, so the native shell sells the same season
+ * pass as a store product. RevenueCat holds the receipt, grants the 'rutline_pro'
+ * entitlement and calls our webhook (supabase/functions/revenuecat-webhook) so
+ * the account gets the same entitlements row the Stripe webhook writes. Every
+ * call here is a no-op in the browser and in a native build with no key.
  */
 import { LOG_LEVEL, PRODUCT_TYPE, PURCHASES_ERROR_CODE, Purchases, type CustomerInfo, type PurchasesError, type PurchasesPackage } from '@revenuecat/purchases-capacitor'
 import { isNative, platform } from './native'
 
-const RC_KEY = (import.meta.env.VITE_REVENUECAT_IOS_KEY as string | undefined)?.trim() || ''
-/** True in an iOS build that carries a RevenueCat key: Pro is sold in-app */
-export const IAP_CONFIGURED = isNative && platform === 'ios' && RC_KEY !== ''
+/** Each store has its own RevenueCat public key: VITE_REVENUECAT_IOS_KEY (appl_) and VITE_REVENUECAT_ANDROID_KEY (goog_) */
+const RC_KEY = ((platform === 'android' ? import.meta.env.VITE_REVENUECAT_ANDROID_KEY : import.meta.env.VITE_REVENUECAT_IOS_KEY) as string | undefined)?.trim() || ''
+/** True in a phone build that carries the RevenueCat key for its store: Pro is sold in-app */
+export const IAP_CONFIGURED = isNative && (platform === 'ios' || platform === 'android') && RC_KEY !== ''
+/** The store this build buys through; the Pro sheet's copy follows it */
+export const STORE_NAME: 'App Store' | 'Google Play' = platform === 'android' ? 'Google Play' : 'App Store'
+/** The store mid-sentence ("through the App Store", "through Google Play") */
+export const STORE_THE = STORE_NAME === 'App Store' ? 'the App Store' : 'Google Play'
+/** What the buyer pays with */
+export const STORE_ACCOUNT = STORE_NAME === 'App Store' ? 'Apple ID' : 'Google account'
 const ENTITLEMENT = 'rutline_pro'
 const PASS_DAYS = 365
 
@@ -28,7 +35,7 @@ export interface IapOffer {
   pkg: PurchasesPackage
   /** The store's own price string, in the buyer's currency */
   price: string
-  /** Auto-renewable subscription (Apple's yearly plan) rather than a one-time pass */
+  /** Auto-renewable subscription (the stores' yearly plan) rather than a one-time pass */
   renews: boolean
 }
 
@@ -55,7 +62,7 @@ function statusFrom(info: CustomerInfo): IapStatus {
   return { pro: until > Date.now(), until, productId: ent.productIdentifier, willRenew: ent.willRenew, sandbox: ent.isSandbox }
 }
 
-/** What the App Store says for this phone's Apple ID. Null when IAP is not in this build. */
+/** What the store says for this phone's store account. Null when IAP is not in this build. */
 export async function getStatus(): Promise<IapStatus | null> {
   if (!IAP_CONFIGURED) return null
   await ensureConfigured()
@@ -78,7 +85,7 @@ export async function identify(userId: string | null): Promise<void> {
   if (!isAnonymous) await Purchases.logOut()
 }
 
-/** The season pass as the App Store prices it for this phone */
+/** The season pass as the store prices it for this phone */
 export async function getOffer(): Promise<IapOffer | null> {
   if (!IAP_CONFIGURED) return null
   await ensureConfigured()
@@ -98,11 +105,11 @@ export async function buy(pkg: PurchasesPackage): Promise<BuyResult> {
   } catch (e) {
     const err = e as Partial<PurchasesError>
     const cancelled = err.userCancelled === true || String(err.code) === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR
-    return { ok: false, cancelled, message: cancelled ? 'Purchase cancelled' : err.message || 'The App Store did not finish the purchase' }
+    return { ok: false, cancelled, message: cancelled ? 'Purchase cancelled' : err.message || `${STORE_NAME === 'App Store' ? 'The App Store' : 'Google Play'} did not finish the purchase` }
   }
 }
 
-/** Reinstalled, or a new phone on the same Apple ID */
+/** Reinstalled, or a new phone on the same store account */
 export async function restore(): Promise<IapStatus> {
   await ensureConfigured()
   const { customerInfo } = await Purchases.restorePurchases()

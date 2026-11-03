@@ -2,7 +2,7 @@ import { ArrowClockwise, ArrowSquareOut, Check, Lock } from '@phosphor-icons/rea
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../lib/auth'
 import { cloudConfigured } from '../../lib/cloud'
-import { IAP_CONFIGURED, buy, getOffer, restore, type IapOffer } from '../../lib/iap'
+import { IAP_CONFIGURED, STORE_ACCOUNT, STORE_NAME, STORE_THE, buy, getOffer, restore, type IapOffer } from '../../lib/iap'
 import { isNative } from '../../lib/native'
 import { PAYMENT_LINK, PRO_BENEFITS, PRO_PRICE, proUntilLabel, refreshPro, useProState, type ProFeature } from '../../lib/pro'
 import { useApp } from '../AppContext'
@@ -11,7 +11,7 @@ import { Button, SectionLabel, Sheet } from '../ui'
 /**
  * The one place Pro is explained and bought. Opened by any locked feature,
  * which is listed first. Buying happens on the web through a Stripe Payment
- * Link tied to the account, and in the iOS app through the App Store (lib/iap.ts).
+ * Link tied to the account, and in the phone apps through the App Store or Google Play (lib/iap.ts).
  */
 export default function ProSheet({ feature, onClose }: { feature: ProFeature | null; onClose: () => void }) {
   const { setView, toast } = useApp()
@@ -50,7 +50,7 @@ export default function ProSheet({ feature, onClose }: { feature: ProFeature | n
           <div className="rounded-2xl border border-ember-500/30 bg-ember-500/10 p-4">
             <SectionLabel>{pro.source === 'native-preview' ? 'Preview build' : pro.source === 'preview' ? 'Open while we test' : 'Your season pass'}</SectionLabel>
             <div className="mt-1 text-[15px] text-bone-50">{pro.until ? `Pro is on until ${proUntilLabel(pro.until)}.` : 'Everything is unlocked in this build.'}</div>
-            <p className="mt-1 text-[12.5px] text-bone-400">{pro.source === 'native-preview' ? 'Pro will be sold through the App Store when Rutline ships there. Until then, the whole app is yours to test.' : pro.source === 'preview' ? 'Pro is open to everyone while Rutline is being tested. It becomes a season pass later; nothing you save goes away.' : pro.source?.startsWith('app-store') ? 'Bought through the App Store. Sign in and it follows your account to every phone; on a new iPhone, Restore purchases brings it back.' : 'Everything below is unlocked on this account, on every phone you sign in on.'}</p>
+            <p className="mt-1 text-[12.5px] text-bone-400">{pro.source === 'native-preview' ? `Pro will be sold through ${STORE_THE} when Rutline ships there. Until then, the whole app is yours to test.` : pro.source === 'preview' ? 'Pro is open to everyone while Rutline is being tested. It becomes a season pass later; nothing you save goes away.' : pro.source?.startsWith('app-store') ? `Bought through ${STORE_THE}. Sign in and it follows your account to every phone; on a new phone, Restore purchases brings it back.` : 'Everything below is unlocked on this account, on every phone you sign in on.'}</p>
           </div>
         ) : (
           <div>
@@ -58,7 +58,7 @@ export default function ProSheet({ feature, onClose }: { feature: ProFeature | n
             <div className="mt-1 text-[26px] font-semibold tracking-tight leading-tight">
               {offer?.price ?? PRO_PRICE} <span className="text-[14px] font-normal text-bone-400">{offer?.renews ? 'a year' : 'for 12 months'}</span>
             </div>
-            <p className="mt-1 text-[13px] text-bone-400 leading-relaxed">{offer?.renews ? 'Renews each year through your Apple ID unless you cancel; cancel any time and keep the rest of the year.' : 'One payment, no auto-renew.'} Buy it in August, hunt the whole season, decide again next year. The free app stays free.</p>
+            <p className="mt-1 text-[13px] text-bone-400 leading-relaxed">{offer?.renews ? `Renews each year through your ${STORE_ACCOUNT} unless you cancel; cancel any time and keep the rest of the year.` : 'One payment, no auto-renew.'} Buy it in August, hunt the whole season, decide again next year. The free app stays free.</p>
           </div>
         )}
 
@@ -82,7 +82,7 @@ export default function ProSheet({ feature, onClose }: { feature: ProFeature | n
             {IAP_CONFIGURED ? (
               <NativeBuy offer={offer} signedIn={!!auth.user} onDone={onClose} />
             ) : isNative ? (
-              <p className="text-[13px] text-bone-400 leading-relaxed">Pro is coming to this version through the App Store. Everything free works today.</p>
+              <p className="text-[13px] text-bone-400 leading-relaxed">Pro is coming to this version through {STORE_THE}. Everything free works today.</p>
             ) : !cloudConfigured ? (
               <p className="text-[13px] text-bone-400 leading-relaxed">Pro needs an account, and this build has no account service.</p>
             ) : !auth.user ? (
@@ -118,9 +118,10 @@ export default function ProSheet({ feature, onClose }: { feature: ProFeature | n
 }
 
 /**
- * Buy and restore through the App Store. Apple wants the price, the term,
- * the standard EULA and the privacy policy on the screen that sells an
- * auto-renewable subscription, so they are all here.
+ * Buy and restore through the store. Apple wants the price, the term, the
+ * standard EULA and the privacy policy on the screen that sells an
+ * auto-renewable subscription, so they are all here; Google Play gets the
+ * same screen without the EULA link.
  */
 function NativeBuy({ offer, signedIn, onDone }: { offer: IapOffer | null | undefined; signedIn: boolean; onDone: () => void }) {
   const { toast } = useApp()
@@ -146,10 +147,10 @@ function NativeBuy({ offer, signedIn, onDone }: { offer: IapOffer | null | undef
     try {
       const got = await restore()
       const s = await refreshPro()
-      toast(got.pro || s.pro ? `Pro is on until ${proUntilLabel(s.until ?? got.until)}` : 'No Pro purchase on this Apple ID')
+      toast(got.pro || s.pro ? `Pro is on until ${proUntilLabel(s.until ?? got.until)}` : `No Pro purchase on this ${STORE_ACCOUNT}`)
       if (s.pro) onDone()
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not reach the App Store')
+      toast(e instanceof Error ? e.message : `Could not reach ${STORE_THE}`)
     } finally {
       setBusy(null)
     }
@@ -158,20 +159,24 @@ function NativeBuy({ offer, signedIn, onDone }: { offer: IapOffer | null | undef
   return (
     <>
       <Button variant="primary" onClick={purchase} disabled={!offer || busy !== null}>
-        {offer === undefined ? 'Checking the App Store…' : offer ? `Buy Pro · ${offer.price}` : 'Not for sale yet'}
+        {offer === undefined ? `Checking ${STORE_THE}…` : offer ? `Buy Pro · ${offer.price}` : 'Not for sale yet'}
       </Button>
       <p className="text-[12px] text-bone-600 leading-relaxed">
-        {offer?.renews ? 'Billed to your Apple ID for a year at a time; it renews unless you cancel in Settings › Apple ID › Subscriptions at least a day before the year ends.' : 'Billed once to your Apple ID and good for 12 months.'}{' '}
+        {offer?.renews ? `Billed to your ${STORE_ACCOUNT} for a year at a time; it renews unless you cancel in ${STORE_NAME === 'App Store' ? 'Settings › Apple ID › Subscriptions' : 'Play Store › Payments and subscriptions'} at least a day before the year ends.` : `Billed once to your ${STORE_ACCOUNT} and good for 12 months.`}{' '}
         {signedIn ? 'It follows your account to every phone.' : 'Signed out, Pro stays on this phone; sign in and it follows your account.'}
       </p>
       <Button variant="ghost" size="sm" onClick={restoreAll} disabled={busy !== null}>
         <ArrowClockwise size={14} className={busy === 'restore' ? 'animate-spin' : ''} /> Restore purchases
       </Button>
       <p className="text-[11.5px] text-bone-600">
-        <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noreferrer" className="underline">
-          Terms of use
-        </a>{' '}
-        ·{' '}
+        {STORE_NAME === 'App Store' && (
+          <>
+            <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noreferrer" className="underline">
+              Terms of use
+            </a>{' '}
+            ·{' '}
+          </>
+        )}
         <a href="https://jordanyoerger.com/rutline/privacy.html" target="_blank" rel="noreferrer" className="underline">
           Privacy
         </a>

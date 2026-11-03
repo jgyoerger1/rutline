@@ -74,6 +74,12 @@ if (typeof window !== 'undefined') {
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && sheetStack.length) sheetStack[sheetStack.length - 1].close()
   })
+  // Android's back button (lib/native.ts) is the same gesture: the open sheet closes first
+  window.addEventListener('rutline:back', (e) => {
+    if (!sheetStack.length) return
+    e.preventDefault()
+    sheetStack[sheetStack.length - 1].close()
+  })
 }
 
 const INPUT = 'w-full h-11 px-3.5 rounded-xl bg-pine-900 border border-bone-50/10 text-bone-50 placeholder:text-bone-600 outline-none focus:border-ember-500/60 focus:ring-2 focus:ring-ember-500/15 transition-colors'

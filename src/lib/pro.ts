@@ -7,7 +7,7 @@ import { isNative } from './native'
  * A native build with no RevenueCat key has no way to buy Pro, and Apple's
  * reviewers reject locked features with no purchase path, so such a build
  * (TestFlight before in-app purchase) runs fully unlocked. Once the key is in
- * the build (repo variable VITE_REVENUECAT_IOS_KEY) Pro is sold in-app and
+ * the build (repo variable VITE_REVENUECAT_IOS_KEY or VITE_REVENUECAT_ANDROID_KEY) Pro is sold in-app and
  * this switches itself off.
  */
 export const NATIVE_PREVIEW = isNative && !IAP_CONFIGURED

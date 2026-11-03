@@ -1,13 +1,17 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
 /**
- * Native shell for the App Store build. The web app is built into dist-native
+ * Native shell for the App Store and Google Play builds. The web app is built into dist-native
  * with a root base path (scripts/build-native.mjs) and copied in by `cap sync`.
  */
 const config: CapacitorConfig = {
   appId: 'com.jordanyoerger.rutline',
   appName: 'Rutline',
   webDir: 'dist-native',
+  android: {
+    backgroundColor: '#0f1110',
+    allowMixedContent: false,
+  },
   ios: {
     scheme: 'Rutline',
     contentInset: 'automatic',

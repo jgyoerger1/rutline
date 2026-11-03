@@ -1,0 +1,134 @@
+name: Android app
+
+# Builds the Android app bundle (.aab) on GitHub's Linux runners.
+#  - "bundle": runs on every push to main and proves the Gradle project builds. When the
+#    upload-key secrets exist the bundle is signed with the Play upload key; otherwise it
+#    is unsigned (still a valid compile check). The .aab is kept as a run artifact.
+#  - "play": run it by hand from the Actions tab with "Upload to Google Play" ticked. Sends
+#    the signed bundle to the internal testing track with the Play service account.
+#    Google only accepts API uploads once a first bundle has been uploaded by hand in the
+#    Play Console, so the very first release is the artifact from a "bundle" run.
+#    Secrets and setup are listed in docs/google-play.md.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'android/**'
+      - 'resources/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'index.html'
+      - 'scripts/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: 'Upload to Google Play (internal testing track)'
+        type: boolean
+        default: false
+      status:
+        description: 'Release status on the track (draft until the app has finished Play Console setup)'
+        type: choice
+        options: [draft, completed]
+        default: draft
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+  VITE_AUTH_PROVIDERS: ${{ vars.VITE_AUTH_PROVIDERS }}
+  VITE_ESRI_API_KEY: ${{ vars.VITE_ESRI_API_KEY }}
+  VITE_PRO_PRICE: ${{ vars.VITE_PRO_PRICE }}
+  VITE_REVENUECAT_ANDROID_KEY: ${{ vars.VITE_REVENUECAT_ANDROID_KEY }}
+  # The phone build has its own switch so the web can stay open while the stores sell Pro
+  VITE_PRO_PREVIEW: ${{ vars.VITE_PRO_PREVIEW_ANDROID }}
+
+jobs:
+  bundle:
+    name: Build app bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+      RUTLINE_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+      RUTLINE_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build web bundle for the native shell
+        run: node scripts/build-native.mjs
+      - name: Sync Capacitor
+        run: npx cap sync android
+      - name: Install the Play upload key
+        if: env.UPLOAD_KEYSTORE_BASE64 != ''
+        run: |
+          set -euo pipefail
+          KS="$RUNNER_TEMP/upload.p12"
+          echo -n "$UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$KS"
+          # Fail here, with a clear message, if Java cannot read the OpenSSL-made keystore
+          keytool -list -storetype PKCS12 -keystore "$KS" -storepass "$RUTLINE_UPLOAD_KEYSTORE_PASSWORD" -alias "${RUTLINE_UPLOAD_KEY_ALIAS:-upload}" > /dev/null
+          echo "RUTLINE_UPLOAD_KEYSTORE=$KS" >> "$GITHUB_ENV"
+          echo "Upload key installed; the bundle will be signed."
+      - name: Build the release bundle
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Version $VERSION, versionCode ${{ github.run_number }}"
+          chmod +x android/gradlew
+          cd android
+          ./gradlew bundleRelease --no-daemon -PversionName="$VERSION" -PversionCode=${{ github.run_number }}
+      - name: Report
+        run: |
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          ls -l "$AAB"
+          if unzip -l "$AAB" | grep -q 'META-INF/.*\.RSA'; then echo "signed with the upload key"; else echo "::warning::unsigned bundle (no upload-key secrets); fine for a compile check, not for Play"; fi
+      - name: Keep the bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rutline-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 30
+
+  play:
+    name: Upload to Google Play (internal)
+    if: github.event_name == 'workflow_dispatch' && inputs.upload == true
+    needs: bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Rutline-aab
+          path: out
+      - name: Write the service-account key
+        env:
+          SA_BASE64: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SA_BASE64" ]; then echo "::error::PLAY_SERVICE_ACCOUNT_JSON_BASE64 secret is missing (docs/google-play.md)"; exit 1; fi
+          echo -n "$SA_BASE64" | base64 --decode > "$RUNNER_TEMP/play-sa.json"
+      - uses: r0adkll/upload-google-play@v1.1.3
+        with:
+          serviceAccountJson: ${{ runner.temp }}/play-sa.json
+          packageName: com.jordanyoerger.rutline
+          releaseFiles: out/app-release.aab
+          track: internal
+          status: ${{ inputs.status }}

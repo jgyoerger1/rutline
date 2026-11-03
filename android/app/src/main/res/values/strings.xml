@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Rutline</string>
+    <string name="title_activity_main">Rutline</string>
+    <string name="package_name">com.jordanyoerger.rutline</string>
+    <string name="custom_url_scheme">com.jordanyoerger.rutline</string>
+</resources>
