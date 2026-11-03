@@ -14,7 +14,7 @@ The native app is the same web code inside a Capacitor shell. GitHub's macOS run
 ## Before the first build
 
 1. **Esri imagery key.** Esri's terms require an API key for imagery inside an app. Create a free ArcGIS Location Platform account at https://location.arcgis.com, make an API key with the **Basemaps** privilege, and add it as a repo *variable* (not secret) named `VITE_ESRI_API_KEY` under Settings → Secrets and variables → Actions → Variables. Both workflows read it; without it the app falls back to the open endpoint, which is fine for development only. The free tier is 2 million tiles a month.
-2. **Supabase sign-up emails.** Supabase's built-in mailer sends only a few emails an hour, so with email confirmation on, a launch-day rush leaves people stuck at "check your email". Either turn confirmation off (Authentication → Sign In / Providers → Email → Confirm email) or connect a custom SMTP provider first (Authentication → Emails → SMTP settings; Resend and Brevo have free tiers).
+2. **Supabase sign-up emails.** Supabase's built-in mailer sends only a few emails an hour, so with email confirmation on, a launch-day rush leaves people stuck at "check your email". Either turn confirmation off (Authentication → Sign In / Providers → Email → Confirm email) or connect a custom SMTP provider first (Authentication → Emails → SMTP settings; Resend and Brevo have free tiers). Done 2026-11-03: Resend custom SMTP is connected, see "Submitting to the App Store" step 2.
 
 ## 1. Apple Developer Program
 
@@ -100,20 +100,15 @@ the first one needs a fresh build afterwards.
 
 1. **Esri key** ("Before the first build" above). The iOS build bakes `VITE_ESRI_API_KEY` in at build time, so
    once the variable exists, bump the version and run one more TestFlight upload. That build is the one to submit.
-2. **Sign-up and password-reset email.** Supabase's built-in mailer delivers only to the project's own team
-   members, so a stranger who signs up or taps "Forgot password" gets nothing. Connect Resend (free up to
-   3,000 emails a month):
-   1. https://resend.com → sign up → **Domains → Add domain** → `jordanyoerger.com` → add the DNS records it
-      shows (a DKIM TXT record and MX + TXT for the bounce subdomain) where the domain's DNS lives → wait for
-      **Verified**.
-   2. Resend → **API Keys → Create API key** → name it `Supabase`, permission *Sending access* → copy the key.
-   3. Supabase dashboard → the project → **Authentication → Emails → SMTP Settings** (older layout: Project
-      Settings → Authentication → SMTP) → **Enable Custom SMTP**: Sender email `rutline@jordanyoerger.com`,
-      Sender name `Rutline`, Host `smtp.resend.com`, Port `465`, Username `resend`, Password = the API key →
-      Save.
-   4. **Authentication → Rate Limits** → raise *Rate limit for sending emails* from 2 an hour to about 30.
-   5. **Authentication → Sign In / Providers → Email** → leave **Confirm email** on; real users receive it now.
-   Test it: sign up in the web app with an address you own and make sure the confirmation lands.
+2. **Sign-up and password-reset email.** DONE 2026-11-03. Supabase custom SMTP sends through Resend as
+   `rutline@jordanyoerger.com` (host `smtp.resend.com`, port `465`, user `resend`, password = the Resend API key
+   named `Supabase`), the email rate limit is 30 an hour and Confirm email is on; a password-reset mail landed in
+   Gmail's inbox. If it ever has to be redone: Resend → **Domains → Add domain** → type the domain carefully
+   (the first attempt was `jordanyeorger.com`, which fails with "domain not found") → Resend shows a DKIM TXT
+   (`resend._domainkey`) and two CNAMEs (`send` and `rsend`, both to `*.forge.rmta.net`; a CNAME cannot share
+   its name with an MX or TXT record, so delete any old `send` MX first) → add them at Squarespace
+   (account.squarespace.com/domains → the domain → DNS → Custom records) → **Verify**. The API key belongs to
+   the account, not the domain, so it survives re-adding the domain.
 3. **Demo account for the reviewer.** In the app, create an account with an address you control (a
    plus-address such as `you+review@...` is fine), confirm it, and save three or four pins and a trail near
    your home ground. Its email and password go into App Store Connect's review section only, never the repo.
