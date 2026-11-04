@@ -106,8 +106,17 @@ Rutline's first App Store release.
 • Camps for sharing a map with your hunting partners
 ```
 
-**Screenshots**: upload the ten PNGs in `store/screenshots/` (1320 × 2868, the 6.9-inch iPhone size) in
-their numbered order. Drag 01-map first; the first three show in search results.
+**Screenshots** (Previews and Screenshots): upload the ten captioned PNGs in `store/screenshots/6.3-captioned/`
+(1206 × 2622, the "iPhone with Dynamic Island, medium display" class Apple has required since late 2026; it scales
+them to every other iPhone) in their numbered order. The first three show in search results, so the map, the wind
+pitch and the landowner shot lead. If App Store Connect also offers a 6.9-inch slot, `store/screenshots/6.9-captioned/`
+is the same set at 1320 × 2868. Regenerate: `node tools/store-shots.mjs` (raw captures, dev server running) then
+`node tools/store-frames.mjs` (captions); add `--class=6.9` to both for the larger set.
+
+**Header** (Header tab): `store/art/header-3840x1646.jpg`, the 21:9 artwork at the top of the product page on
+iOS 27. **Search Results** (Search Results tab): `store/art/search-3840x2560.jpg`, the 3:2 artwork shown beside
+the app in search instead of the screenshot row. Both come from `node tools/store-art.mjs`; the buck and the
+lockup sit in the middle 60% because Apple crops the edges on some devices. Apple reviews these with the version.
 
 ## App Privacy (General → App Privacy)
 

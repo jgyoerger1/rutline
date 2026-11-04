@@ -1,14 +1,21 @@
-// App Store screenshots: 6.9-inch iPhone, 1320 x 2868 (440 x 956 CSS px at 3x).
-// Drives the dev server with Chrome, seeds a home ground and a few pins,
-// and saves PNGs to store/screenshots/. Run `npm run dev` first.
-//   node tools/store-shots.mjs
+// App Store screenshots. Drives the dev server with Chrome, seeds a home ground and
+// a few pins, and saves PNGs to store/screenshots/<class>/. Run `npm run dev` first.
+//   node tools/store-shots.mjs            # 6.3-inch class, 1206 x 2622 (402 x 874 CSS px at 3x): the size Apple requires
+//   node tools/store-shots.mjs --class=6.9  # 6.9-inch class, 1320 x 2868 (440 x 956 at 3x), optional larger set
+// Apple (2026) requires at least one "iPhone with Dynamic Island (medium display)" screenshot
+// and scales it to every other iPhone; the 6.9 set is only used on the largest phones.
 import fs from 'node:fs'
 import path from 'node:path'
 import puppeteer from 'puppeteer-core'
 
+const CLASSES = { '6.3': { width: 402, height: 874 }, '6.9': { width: 440, height: 956 } }
+const CLASS = (process.argv.find((a) => a.startsWith('--class=')) ?? '--class=6.3').slice('--class='.length)
+if (!CLASSES[CLASS]) throw new Error(`unknown class ${CLASS}; use ${Object.keys(CLASSES).join(' or ')}`)
+const SIZE = CLASSES[CLASS]
+
 const BASE = process.env.RUTLINE_URL ?? 'http://localhost:5173'
 const CHROME = process.env.CHROME ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-const OUT = path.resolve('store/screenshots')
+const OUT = path.resolve('store/screenshots', CLASS)
 fs.mkdirSync(OUT, { recursive: true })
 for (const f of fs.readdirSync(OUT)) if (f.endsWith('.png')) fs.unlinkSync(path.join(OUT, f))
 
@@ -45,7 +52,7 @@ const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: true,
   args: ['--hide-scrollbars', '--force-dark-mode', '--lang=en-US'],
-  defaultViewport: { width: 440, height: 956, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+  defaultViewport: { ...SIZE, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
 })
 const page = await browser.newPage()
 await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }])
@@ -104,7 +111,7 @@ await shot('01-map')
 
 // 2. Tap a parcel, away from the pins, to show the owner of record
 await mapAt(HOME.lat - 0.004, HOME.lon - 0.014, 17)
-await page.touchscreen.tap(220, 520)
+await page.touchscreen.tap(SIZE.width / 2, SIZE.height * 0.54)
 await sleep(2500)
 // The record on screen is a real person's. Store screenshots show sample
 // owner text instead, so nobody's name and address ship in the listing.

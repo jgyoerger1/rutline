@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rutline App Store header / search artwork</title>
+<style>
+  /* Two App Store creative assets from one page (tools/store-art.mjs):
+       ?kind=header  3840 x 1646 (21:9), the product-page header
+       ?kind=search  3840 x 2560 (3:2),  the search-results artwork
+     Apple shows both at different crops per device, so the buck and the lockup
+     sit inside the middle 60% and the edges are background only. */
+  :root { --bg: #0f1311; --w: 3840px; --h: 1646px; --buck: 1646px; --buck-x: 380px; --lock-w: 1200px; --lock-x: 2150px; }
+  body[data-kind="search"] { --h: 2560px; --buck: 1900px; --buck-x: 300px; --lock-w: 1250px; --lock-x: 2250px; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: var(--w); height: var(--h); background: var(--bg); overflow: hidden; }
+  .card { position: relative; width: var(--w); height: var(--h); overflow: hidden; background: var(--bg); }
+  /* Far background: the bottom of the poster (trees and contour lines; its lockup sits in
+     the upper half and must stay out of frame), blown up, blurred and dimmed */
+  .topo { position: absolute; inset: -6%; background: url('../public/brand/poster.jpg') center 100% / cover no-repeat; opacity: 0.42; filter: blur(2px) saturate(0.8); }
+  /* The 3:2 frame shows more of the poster, so zoom in past its deer silhouette and contour labels */
+  body[data-kind="search"] .topo { background-size: 140% auto; opacity: 0.36; }
+  .topo-veil { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(15,19,17,0.55), rgba(15,19,17,0.2) 35%, rgba(15,19,17,0.45) 60%, rgba(15,19,17,0.8)); }
+  /* Ember glow behind the antlers */
+  .glow { position: absolute; left: calc(var(--buck-x) + var(--buck) * 0.22); top: calc(50% - var(--buck) * 0.42); width: calc(var(--buck) * 0.75); height: calc(var(--buck) * 0.75); background: radial-gradient(closest-side, rgba(232,112,44,0.34), rgba(232,112,44,0.1) 55%, transparent 75%); filter: blur(60px); }
+  /* The buck, bottom-anchored, edges feathered into the background. Scaled past the
+     box so the stray phone edge in the source art's bottom-right corner stays out. */
+  .buck { position: absolute; left: var(--buck-x); bottom: 0; width: var(--buck); height: var(--buck); background: url('../public/brand/hero-buck.jpg') left top / 116% auto no-repeat;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 12%, #000 100%);
+    -webkit-mask-composite: source-in; mask-composite: intersect; }
+  /* The lockup: mark + wordmark + tagline cropped out of brand/lockup.jpg (its icon tile and
+     mountains are left out), lifted onto our ground with a lighten blend and a soft mask */
+  .lockup { position: absolute; left: var(--lock-x); top: 50%; width: var(--lock-w); aspect-ratio: 790 / 640; transform: translateY(-50%);
+    background: url('../public/brand/lockup.jpg') no-repeat; background-size: calc(var(--lock-w) * 1448 / 790) auto;
+    background-position: calc(var(--lock-w) * -330 / 790) calc(var(--lock-w) * -60 / 790);
+    mix-blend-mode: lighten; filter: contrast(1.04);
+    -webkit-mask-image: radial-gradient(ellipse 62% 64% at 50% 50%, #000 70%, transparent 100%); }
+  /* Keep the far left and right readable as background on any crop */
+  .edge-l { position: absolute; left: 0; top: 0; bottom: 0; width: 14%; background: linear-gradient(90deg, rgba(15,19,17,0.9), transparent); }
+  .edge-r { position: absolute; right: 0; top: 0; bottom: 0; width: 14%; background: linear-gradient(270deg, rgba(15,19,17,0.92), transparent); }
+  .vignette { position: absolute; inset: 0; background: radial-gradient(90% 90% at 50% 50%, transparent 55%, rgba(15,19,17,0.7) 100%); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="topo"></div>
+    <div class="topo-veil"></div>
+    <div class="glow"></div>
+    <div class="buck"></div>
+    <div class="lockup"></div>
+    <div class="edge-l"></div>
+    <div class="edge-r"></div>
+    <div class="vignette"></div>
+  </div>
+  <script>
+    const kind = new URLSearchParams(location.search).get('kind') || 'header'
+    document.body.dataset.kind = kind
+  </script>
+</body>
+</html>

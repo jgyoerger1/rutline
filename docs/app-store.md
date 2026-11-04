@@ -9,7 +9,7 @@ The native app is the same web code inside a Capacitor shell. GitHub's macOS run
 - `fastlane/Fastfile`: archives with your distribution certificate and uploads to TestFlight.
 - `public/privacy.html`, live at https://jordanyoerger.com/rutline/privacy.html, and `public/support.html`, live at https://jordanyoerger.com/rutline/support.html. App Review asks for both links.
 - In-app account deletion (Settings → Account → Danger zone), which Apple requires for apps with sign-in.
-- `store/screenshots/`: App Store screenshots at 1320 × 2868 (the 6.9-inch iPhone size, the only one Apple requires). Regenerate with `node tools/store-shots.mjs` while `npm run dev` is running.
+- `store/screenshots/6.3-captioned/`: the App Store screenshot set, 1206 × 2622 (the Dynamic Island medium class Apple requires; it scales them to every other iPhone), with a caption band above each capture. `store/art/`: the iOS 27 product-page header (3840 × 1646) and search-results artwork (3840 × 2560). Regenerate with `node tools/store-shots.mjs`, `node tools/store-frames.mjs` and `node tools/store-art.mjs` while `npm run dev` is running; raw captures and the 6.9-inch set are not committed.
 
 ## Before the first build
 

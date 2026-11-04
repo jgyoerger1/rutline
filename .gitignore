@@ -13,3 +13,8 @@ ios/App/App/public
 ios/App/App/capacitor.config.json
 fastlane/report.xml
 fastlane/README.md
+
+# Regenerable store captures (tools/store-shots.mjs + store-frames.mjs); only the 6.3 captioned set is committed
+store/screenshots/6.3/
+store/screenshots/6.9/
+store/screenshots/6.9-captioned/
