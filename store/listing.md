@@ -113,10 +113,13 @@ pitch and the landowner shot lead. If App Store Connect also offers a 6.9-inch s
 is the same set at 1320 × 2868. Regenerate: `node tools/store-shots.mjs` (raw captures, dev server running) then
 `node tools/store-frames.mjs` (captions); add `--class=6.9` to both for the larger set.
 
-**Header** (Header tab): `store/art/header-3840x1646.jpg`, the 21:9 artwork at the top of the product page on
-iOS 27. **Search Results** (Search Results tab): `store/art/search-3840x2560.jpg`, the 3:2 artwork shown beside
-the app in search instead of the screenshot row. Both come from `node tools/store-art.mjs`; the buck and the
-lockup sit in the middle 60% because Apple crops the edges on some devices. Apple reviews these with the version.
+**Header** (Header tab): `store/creative/header-3840x1646.png`, the 21:9 artwork at the top of the product page
+on iOS 27: "Know the ground before you hunt it." over the live map, the buck at the left edge. **Search Results**
+(Search Results tab): `store/creative/search-3840x2560.png`, the 3:2 artwork shown beside the app in search
+instead of the screenshot row: "See whose land you're on." with two phones. Both from `node tools/store-art.mjs`
+(dev server running), with the text inside Apple's safe area because the edges are cropped on some devices.
+Brand-only alternates (buck and lockup, no headline) are `header-lockup-3840x1646.jpg` and
+`search-lockup-3840x2560.jpg` from `node tools/store-art-buck.mjs`. Apple reviews these with the version.
 
 ## App Privacy (General → App Privacy)
 

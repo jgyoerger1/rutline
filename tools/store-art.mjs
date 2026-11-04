@@ -1,7 +1,9 @@
 // App Store creative assets (iOS 27 product page): the header (21:9, 3840 x 1646)
 // and the search results image (3:2, 3840 x 2560). Captures the live map from the
 // dev server as the backdrop, then renders tools/store-header.html and
-// tools/store-search.html to store/creative/. Run `npm run dev` first.
+// tools/store-search.html to store/creative/. Run `npm run dev` first, and
+// `node tools/store-shots.mjs --class=6.9` once: the search art's phones show two of
+// those raw captures (store/screenshots/6.9/, git-ignored).
 //   node tools/store-art.mjs
 import fs from 'node:fs'
 import path from 'node:path'

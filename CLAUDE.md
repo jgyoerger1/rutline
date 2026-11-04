@@ -72,7 +72,8 @@ node tools/play-shots.mjs      # Google Play screenshots 1080x1920 -> store/play
 node tools/feature-graphic.mjs # Play feature graphic 1024x500 + icon 512 -> store/play/
 node tools/store-shots.mjs   # raw App Store captures 1206x2622 -> store/screenshots/6.3/ (dev server running; --class=6.9 for 1320x2868)
 node tools/store-frames.mjs  # captioned set in App Store order -> store/screenshots/6.3-captioned/ (the set to upload; --class=6.9)
-node tools/store-art.mjs     # iOS 27 product-page header 3840x1646 + search-results art 3840x2560 -> store/art/
+node tools/store-art.mjs     # iOS 27 product-page header 3840x1646 + search-results art 3840x2560 (headline over the live map) -> store/creative/
+node tools/store-art-buck.mjs  # brand-only alternates (buck + lockup) -> store/creative/*-lockup-*.jpg
 node tools/pro-shot.mjs      # Pro sheet review screenshot -> store/review/ (dev server running)
 node tools/pro-image.mjs     # 1024 subscription image -> store/pro-subscription-1024.png
 node tools/splash.mjs        # launch screen source (plain pine; Splash.tsx stages the mark) -> resources/splash*.png, then npm run ios:assets
