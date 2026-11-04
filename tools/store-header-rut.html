@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rutline product page header, rut phases</title>
+<style>
+  @font-face { font-family: 'Geist'; font-weight: 100 900; src: url('../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Geist Mono'; font-weight: 100 900; src: url('../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2') format('woff2'); }
+  :root { --bg: #0f1311; --bone: #f2ede2; --bone-2: #c9c3b6; --bone-3: #8e887c; --ember: #e8702c; }
+  * { box-sizing: border-box; margin: 0; }
+  /* 3840 x 1646 (21:9) at 2x. Apple's safe area: x 548-1372, y 246-577 in these px.
+     The headline and the "today" marker sit inside it; the ribbon's ends and the buck
+     are background that may be cropped. */
+  html, body { width: 1920px; height: 823px; background: var(--bg); overflow: hidden; }
+  .art { position: relative; width: 1920px; height: 823px; overflow: hidden; }
+  /* Live app map, injected by store-art.mjs */
+  .map { position: absolute; inset: 0; background: center / cover no-repeat; filter: saturate(0.6) brightness(0.5); }
+  .shade { position: absolute; inset: 0; background:
+      radial-gradient(ellipse 760px 360px at 980px 400px, rgba(15,19,17,0.96), rgba(15,19,17,0.82) 55%, rgba(15,19,17,0) 100%),
+      linear-gradient(180deg, rgba(15,19,17,0.75) 0px, rgba(15,19,17,0) 180px),
+      linear-gradient(0deg, rgba(15,19,17,0.85) 0px, rgba(15,19,17,0) 240px),
+      linear-gradient(90deg, rgba(15,19,17,0.92) 0px, rgba(15,19,17,0.25) 520px, rgba(15,19,17,0) 760px); }
+  .buck { position: absolute; left: -110px; top: -70px; width: 960px; height: 960px;
+      background: url('../public/brand/hero-buck.jpg') center / cover no-repeat;
+      -webkit-mask-image: linear-gradient(90deg, #000 38%, transparent 78%), linear-gradient(0deg, transparent 0, #000 22%);
+      -webkit-mask-composite: source-in; mask-composite: intersect; }
+
+  .text { position: absolute; left: 548px; width: 824px; top: 236px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .tag { font: 600 19px/1 'Geist Mono', monospace; letter-spacing: 0.26em; text-transform: uppercase; color: var(--ember); }
+  h1 { margin-top: 18px; font: 650 70px/1.02 'Geist', sans-serif; letter-spacing: -0.025em; color: var(--bone); }
+  .sub { margin-top: 16px; font: 450 23px/1.3 'Geist', sans-serif; color: var(--bone-2); }
+
+  /* The rut ribbon: the season's phases in proportion (days from peak, src/lib/rut.ts),
+     the ember line is daylight buck movement by phase, the marker is today */
+  .ribbon { position: absolute; left: 430px; width: 1060px; top: 470px; height: 120px; }
+  .track { position: absolute; left: 0; right: 0; top: 56px; height: 14px; display: flex; gap: 3px; border-radius: 7px; overflow: hidden; }
+  .seg { height: 100%; background: #2a302c; }
+  .seg.s1 { background: #30372f; } .seg.s2 { background: #3c4634; } .seg.s3 { background: var(--ember); box-shadow: 0 0 24px rgba(232,112,44,0.55); }
+  .seg.s4 { background: #6b4a2a; } .seg.s5 { background: #3c4634; } .seg.s6 { background: #30372f; }
+  .labels { position: absolute; left: 0; right: 0; top: 84px; display: flex; gap: 3px; }
+  .labels span { font: 500 13px/1 'Geist Mono', monospace; letter-spacing: 0.12em; text-transform: uppercase; color: var(--bone-3); text-align: center; }
+  .labels span.on { color: var(--bone); }
+  svg.line { position: absolute; left: 0; top: 0; width: 1060px; height: 70px; overflow: visible; }
+  /* Today's reading sits beside the dot, on the curve's own line, between the subtitle and the track */
+  .today { position: absolute; transform: translateY(-50%); font: 600 13px/1 'Geist Mono', monospace; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ember); white-space: nowrap; text-shadow: 0 0 14px rgba(15,19,17,0.95), 0 0 4px rgba(15,19,17,1); }
+  .credit { position: absolute; right: 18px; bottom: 12px; font: 500 11px/1 'Geist', sans-serif; color: rgba(242,237,226,0.4); }
+</style>
+</head>
+<body>
+  <div class="art">
+    <div class="map"></div>
+    <div class="shade"></div>
+    <div class="buck"></div>
+    <div class="text">
+      <div class="tag">Every phase of the rut</div>
+      <h1>Know when to sit,<br>not just where.</h1>
+      <p class="sub">A daily movement forecast from the rut calendar, your wind and the weather.</p>
+    </div>
+    <div class="ribbon" id="ribbon"></div>
+    <div class="credit">Imagery: Esri, Maxar, Earthstar Geographics</div>
+  </div>
+  <script>
+    // Phases in days around peak breeding (src/lib/rut.ts): width = length, lift = daylight-movement multiplier
+    const PHASES = [
+      { k: 's1', label: 'Pre-rut', days: 14, lift: 1.05 },
+      { k: 's2', label: 'Seeking', days: 10, lift: 1.18 },
+      { k: 's3', label: 'Chasing', days: 8, lift: 1.32 },
+      { k: 's4', label: 'Peak', days: 9, lift: 1.2 },
+      { k: 's5', label: 'Post-rut', days: 14, lift: 1.02 },
+      { k: 's6', label: '2nd rut', days: 14, lift: 1.12 },
+    ]
+    const total = PHASES.reduce((n, p) => n + p.days, 0)
+    const W = 1060
+    const ribbon = document.getElementById('ribbon')
+    const track = document.createElement('div'); track.className = 'track'
+    const labels = document.createElement('div'); labels.className = 'labels'
+    let x = 0
+    const pts = []
+    for (const p of PHASES) {
+      const w = (p.days / total) * W
+      const seg = document.createElement('div'); seg.className = `seg ${p.k}`; seg.style.width = `${w}px`; track.appendChild(seg)
+      const lab = document.createElement('span'); lab.textContent = p.label; lab.style.width = `${w}px`; if (p.k === 's3') lab.className = 'on'; labels.appendChild(lab)
+      pts.push({ x: x + w / 2, y: 62 - (p.lift - 1) * 150, w, p })
+      x += w
+    }
+    // The rut line: a smooth curve through the phase lifts, fading in from the left edge
+    const d = pts.map((q, i) => {
+      if (i === 0) return `M ${-80} ${62} C ${-30} ${62}, ${q.x - 40} ${q.y}, ${q.x} ${q.y}`
+      const a = pts[i - 1], cx = (a.x + q.x) / 2
+      return `C ${cx} ${a.y}, ${cx} ${q.y}, ${q.x} ${q.y}`
+    }).join(' ') + ` C ${W + 40} ${62}, ${W + 80} ${62}, ${W + 120} ${62}`
+    const ns = 'http://www.w3.org/2000/svg'
+    const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('class', 'line'); svg.setAttribute('viewBox', `0 0 ${W} 70`)
+    svg.innerHTML = `<defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#e8702c" stop-opacity="0"/><stop offset="0.18" stop-color="#e8702c" stop-opacity="0.9"/><stop offset="0.82" stop-color="#e8702c" stop-opacity="0.9"/><stop offset="1" stop-color="#e8702c" stop-opacity="0"/></linearGradient></defs>
+      <path d="${d}" fill="none" stroke="url(#g)" stroke-width="3.5" stroke-linecap="round"/>`
+    const today = pts[2]
+    const dot = document.createElementNS(ns, 'circle'); dot.setAttribute('cx', today.x); dot.setAttribute('cy', today.y); dot.setAttribute('r', 7); dot.setAttribute('fill', '#e8702c'); dot.setAttribute('stroke', '#0f1311'); dot.setAttribute('stroke-width', 3)
+    svg.appendChild(dot)
+    ribbon.append(svg, track, labels)
+    const label = document.createElement('div'); label.className = 'today'; label.style.left = `${today.x + 18}px`; label.style.top = `${today.y}px`
+    label.textContent = 'Today · dawn 84 · dusk 71'
+    ribbon.appendChild(label)
+  </script>
+</body>
+</html>

@@ -87,6 +87,8 @@ async function render(template, map, width, height, name) {
 
 const wide = await mapShot(1920, 823, 17)
 await render('store-header.html', wide, 1920, 823, 'header-3840x1646.png')
+// Same backdrop, the rut-phase headline and ribbon instead of the land line
+await render('store-header-rut.html', wide, 1920, 823, 'header-rut-3840x1646.png')
 const tall = await mapShot(1920, 1280, 17)
 await render('store-search.html', tall, 1920, 1280, 'search-3840x2560.png')
 await browser.close()

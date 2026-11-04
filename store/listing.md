@@ -113,8 +113,10 @@ pitch and the landowner shot lead. If App Store Connect also offers a 6.9-inch s
 is the same set at 1320 × 2868. Regenerate: `node tools/store-shots.mjs` (raw captures, dev server running) then
 `node tools/store-frames.mjs` (captions); add `--class=6.9` to both for the larger set.
 
-**Header** (Header tab): `store/creative/header-3840x1646.png`, the 21:9 artwork at the top of the product page
-on iOS 27: "Know the ground before you hunt it." over the live map, the buck at the left edge. **Search Results**
+**Header** (Header tab): `store/creative/header-rut-3840x1646.png`, the 21:9 artwork at the top of the product page
+on iOS 27: "Know when to sit, not just where." with the rut ribbon (Pre-rut to 2nd rut, Chasing lit, today's
+dawn/dusk reading) over the live map, the buck at the left edge. That is the differentiator no other hunting app
+leads with. `header-3840x1646.png` is the land-line version ("Know the ground before you hunt it."). **Search Results**
 (Search Results tab): `store/creative/search-3840x2560.png`, the 3:2 artwork shown beside the app in search
 instead of the screenshot row: "See whose land you're on." with two phones. Both from `node tools/store-art.mjs`
 (dev server running), with the text inside Apple's safe area because the edges are cropped on some devices.
