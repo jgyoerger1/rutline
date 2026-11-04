@@ -3,6 +3,7 @@
 // to store/screenshots/<class>-captioned/. The first three are what search results show.
 //   node tools/store-frames.mjs             # 6.3-inch class (1206 x 2622), the one Apple requires
 //   node tools/store-frames.mjs --class=6.9
+//   node tools/store-frames.mjs --only=blood-light   # redo one (or a comma list); the rest stay as they are
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -15,8 +16,9 @@ const SIZE = CLASSES[CLASS]
 if (!SIZE) throw new Error(`unknown class ${CLASS}`)
 const RAW = path.resolve('store/screenshots', CLASS)
 const OUT = path.resolve('store/screenshots', `${CLASS}-captioned`)
+const ONLY = (process.argv.find((a) => a.startsWith('--only=')) ?? '--only=').slice('--only='.length).split(',').filter(Boolean)
 fs.mkdirSync(OUT, { recursive: true })
-for (const f of fs.readdirSync(OUT)) if (f.endsWith('.png')) fs.unlinkSync(path.join(OUT, f))
+if (!ONLY.length) for (const f of fs.readdirSync(OUT)) if (f.endsWith('.png')) fs.unlinkSync(path.join(OUT, f))
 
 // App Store order: the first three show in search results, so the pitch comes first
 const SHOTS = [
@@ -41,6 +43,7 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage()
 const html = pathToFileURL(path.resolve('tools/store-frames.html')).href
 for (const s of SHOTS) {
+  if (ONLY.length && !ONLY.some((o) => s.out.includes(o) || s.raw.includes(o))) continue
   const src = path.join(RAW, `${s.raw}.png`)
   if (!fs.existsSync(src)) {
     console.log('missing raw capture, skipped:', path.relative(process.cwd(), src))

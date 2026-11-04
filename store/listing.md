@@ -111,7 +111,7 @@ Rutline's first App Store release.
 them to every other iPhone) in their numbered order. The first three show in search results, so the map, the wind
 pitch and the landowner shot lead. If App Store Connect also offers a 6.9-inch slot, `store/screenshots/6.9-captioned/`
 is the same set at 1320 × 2868. Regenerate: `node tools/store-shots.mjs` (raw captures, dev server running) then
-`node tools/store-frames.mjs` (captions); add `--class=6.9` to both for the larger set.
+`node tools/store-frames.mjs` (captions); add `--class=6.9` to both for the larger set. The blood-light shot comes from `node tools/blood-shot.mjs` instead (Chrome plays `store/source/blood-trail.jpg` as the camera, so the light is running in the picture), then `node tools/store-frames.mjs --only=blood-light`.
 
 **Header** (Header tab): `store/creative/header-rut-3840x1646.png`, the 21:9 artwork at the top of the product page
 on iOS 27: "Know when to sit, not just where." with the rut ribbon (Pre-rut to 2nd rut, Chasing lit, today's

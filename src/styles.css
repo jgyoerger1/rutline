@@ -128,8 +128,9 @@ body {
 .rut-line { stroke-dasharray: 6 7; animation: dash-flow 1.8s linear infinite; }
 
 /* Tracker scan sweep */
-@keyframes scan { from { transform: translateY(-2%); } to { transform: translateY(102%); } }
-.scanline { animation: scan 2.8s linear infinite; }
+/* top, not translateY: the line is 1 px tall, so a percentage translate never moved it */
+@keyframes scan { from { top: -1%; } to { top: 101%; } }
+.scanline { top: 0; animation: scan 2.8s linear infinite; }
 
 /* Pulsing dot (barometer now marker, map me marker) */
 @keyframes ring {
