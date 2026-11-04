@@ -30,7 +30,14 @@ const config: CapacitorConfig = {
       overlaysWebView: true,
     },
     Keyboard: {
-      resize: 'body',
+      // 'native' shrinks the whole web view to the space above the keyboard. Every screen
+      // and sheet is sized to the viewport (fixed / 100dvh), so 'body' (only document.body
+      // shrinks) left sign-in and sheet fields under the keyboard. lib/native.ts then
+      // scrolls the focused field into the middle of what is left.
+      resize: 'native',
+      // Android: the status bar overlays the web view (full screen), where the stock
+      // adjustResize does nothing; this makes the plugin resize the view itself
+      resizeOnFullScreen: true,
     },
   },
 }

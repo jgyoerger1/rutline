@@ -52,6 +52,14 @@ export async function initNative(onOpenUrl: (url: string) => void): Promise<void
   } catch {
     /* ios only */
   }
+  // The view has shrunk to the space above the keyboard (capacitor.config.ts, resize
+  // 'native'); bring the field being typed in to the middle of what is left
+  void Keyboard.addListener('keyboardDidShow', () => {
+    const el = document.activeElement
+    if (!(el instanceof HTMLElement) || !el.matches('input, textarea, select, [contenteditable="true"]')) return
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({ block: 'center', behavior: smooth ? 'smooth' : 'auto' })
+  })
   try {
     const launch = await CapApp.getLaunchUrl()
     if (launch?.url) onOpenUrl(launch.url)

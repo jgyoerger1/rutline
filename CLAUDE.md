@@ -11,8 +11,8 @@ personal contact details. Business case lives in a separate private repo (rutlin
 - Web (PWA): https://jordanyoerger.com/rutline/ — GitHub Pages via Actions (`.github/workflows/deploy.yml`).
   `jgyoerger1.github.io/rutline` redirects there. Privacy/support pages: `public/privacy.html`, `public/support.html`.
 - iOS: Capacitor shell, bundle id `com.jordanyoerger.rutline`, iPhone only. In **TestFlight** (1.0.0 first upload
-  2026-10-25; 1.1.0 uploaded 2026-10-28 with in-app purchase; 1.1.1, 1.1.2 and 1.1.3 uploaded 2026-10-30; 1.1.4 and **1.1.5** (first build with the Esri key) uploaded 2026-11-01). Not yet submitted to App Store review.
-- Version lives in `package.json` (`1.1.5`); iOS build number = GitHub Actions run number.
+  2026-10-25; 1.1.0 uploaded 2026-10-28 with in-app purchase; 1.1.1, 1.1.2 and 1.1.3 uploaded 2026-10-30; 1.1.4 and 1.1.5 (first build with the Esri key) uploaded 2026-11-01; **1.1.6** (keyboard fix: Keyboard resize 'native', sign-in and sheet fields stay above the keyboard) uploaded 2026-11-04). Not yet submitted to App Store review.
+- Version lives in `package.json` (`1.1.6`); iOS build number = GitHub Actions run number.
 - Android: Capacitor shell `android/` (added 2026-11-03, same id), `android.yml` builds the `.aab` on `ubuntu-latest` (JDK 21);
   first run 41663334270 green, unsigned until the upload-key secrets are loaded. Not yet in the Play Console; `docs/google-play.md`
   is the ordered plan (Jordan: account, first manual upload, service account, RevenueCat Play key, 12-tester closed test).
@@ -92,7 +92,7 @@ Without Supabase values the app runs on-device only. Dev mock backend: `localSto
   Can also be dispatched via the GitHub REST API with `inputs.upload=true`.
 - Android: `android.yml` "bundle" job (`ubuntu-latest`, JDK 21, Gradle cache) runs on pushes touching app paths; signs with the
   Play upload key when the 3 **secrets** `ANDROID_UPLOAD_KEYSTORE_BASE64`, `ANDROID_UPLOAD_KEYSTORE_PASSWORD`,
-  `ANDROID_UPLOAD_KEY_ALIAS` exist (loaded by `C:Devutline-secretsoad-secrets.mjs`, android group), unsigned otherwise;
+  `ANDROID_UPLOAD_KEY_ALIAS` exist (loaded by `C:\Dev\rutline-secrets\load-secrets.mjs`, android group), unsigned otherwise;
   keeps the `Rutline-aab` artifact. "play" job: Run workflow -> tick "Upload to Google Play" (needs `PLAY_SERVICE_ACCOUNT_JSON_BASE64`;
   status draft until the Play Console checklist is done). Reads `VITE_REVENUECAT_ANDROID_KEY` and `VITE_PRO_PREVIEW_ANDROID`
   (both unset: the Android build runs fully unlocked as native-preview).
@@ -115,6 +115,8 @@ Without Supabase values the app runs on-device only. Dev mock backend: `localSto
 - Wind compass arrow shows where scent CARRIES (needle rotates by the "from" bearing) — matches map chip + 48 h strip.
 - Parcel sheet carries a not-a-survey disclaimer. Phone numbers are never looked up automatically (no free source;
   people-search deep links deliberately not built). Manual phone entry with Call/Text is fine.
+- Keyboard (capacitor.config.ts): resize 'native' + Android resizeOnFullScreen. 'body' left every fixed/100dvh screen
+  under the keyboard (TestFlight 1.1.5 sign-in). lib/native.ts scrolls the focused field to centre on keyboardDidShow.
 - Flag hardware/account prerequisites (Apple, paid services, keys) BEFORE starting work that depends on them.
 - Jordan follows step-by-step instructions in vendor dashboards; give numbered, exact click paths.
 
