@@ -130,7 +130,9 @@ For every one of them: **Linked to the user: Yes. Used for tracking: No. Purpose
 
 | Data type | Where it goes |
 |---|---|
-| Contact Info → Email Address | Supabase sign-in |
+| Contact Info → Email Address | Supabase sign-in; also the hunter email typed for the permission letter (settings sync to the account) |
+| Contact Info → Name | the camp display name, and the hunter name typed for the permission letter (settings sync to the account) |
+| Contact Info → Phone Number | the hunter phone typed for the permission letter, if entered (settings sync to the account) |
 | Location → Precise Location | home ground to Open-Meteo and BigDataCloud for weather and a place label; pin coordinates sync to Supabase when signed in |
 | User Content → Photos or Videos | pin photos sync to Supabase storage when signed in |
 | User Content → Other User Content | pins, trails, notes |
