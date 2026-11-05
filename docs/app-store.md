@@ -129,7 +129,7 @@ Then App Store Connect, top to bottom. The text for every field is in `store/lis
    Submit**. If it says *Missing Metadata*, open it: a localization (display name and description), a price,
    and under Review Information the screenshot `store/review/pro-sheet.png` with its note. Save.
 5. **iOS App → the version → Prepare for Submission** (the version string must equal `package.json`):
-   drag the ten screenshots into the **6.9-inch** slot; Promotional Text, Description, Keywords, Support URL,
+   drag the ten captioned screenshots into the **iPhone with Dynamic Island (medium display)** slot, and the Duo sets into the two **iPhone Duo** slots (`store/listing.md` → Screenshots); Promotional Text, Description, Keywords, Support URL,
    Marketing URL; **Build → + → the latest build** (the one with the Esri key); **In-App Purchases and
    Subscriptions → + → Rutline Pro** (a subscription is only reviewed alongside a version, and the first one
    has to ride with the first submission); Copyright; **App Review Information**: Sign-in required → the demo

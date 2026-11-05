@@ -4,21 +4,25 @@
 //   node tools/store-frames.mjs             # 6.3-inch class (1206 x 2622), the one Apple requires
 //   node tools/store-frames.mjs --class=6.9
 //   node tools/store-frames.mjs --only=blood-light   # redo one (or a comma list); the rest stay as they are
+//   node tools/store-frames.mjs --class=duo-outer --jpg   # iPhone Duo outer display (1398 x 2034); duo-inner is 2007 x 2853.
+//                                                         # --jpg writes JPEG (Apple accepts it) so the big Duo sets stay small in git
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import puppeteer from 'puppeteer-core'
 
 const CHROME = process.env.CHROME ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-const CLASSES = { '6.3': { width: 402, height: 874 }, '6.9': { width: 440, height: 956 } }
+const CLASSES = { '6.3': { width: 402, height: 874 }, '6.9': { width: 440, height: 956 }, 'duo-outer': { width: 466, height: 678 }, 'duo-inner': { width: 669, height: 951 } }
 const CLASS = (process.argv.find((a) => a.startsWith('--class=')) ?? '--class=6.3').slice('--class='.length)
 const SIZE = CLASSES[CLASS]
 if (!SIZE) throw new Error(`unknown class ${CLASS}`)
+const JPG = process.argv.includes('--jpg')
+const EXT = JPG ? 'jpg' : 'png'
 const RAW = path.resolve('store/screenshots', CLASS)
 const OUT = path.resolve('store/screenshots', `${CLASS}-captioned`)
 const ONLY = (process.argv.find((a) => a.startsWith('--only=')) ?? '--only=').slice('--only='.length).split(',').filter(Boolean)
 fs.mkdirSync(OUT, { recursive: true })
-if (!ONLY.length) for (const f of fs.readdirSync(OUT)) if (f.endsWith('.png')) fs.unlinkSync(path.join(OUT, f))
+if (!ONLY.length) for (const f of fs.readdirSync(OUT)) if (/\.(png|jpg)$/.test(f)) fs.unlinkSync(path.join(OUT, f))
 
 // App Store order: the first three show in search results, so the pitch comes first
 const SHOTS = [
@@ -49,12 +53,12 @@ for (const s of SHOTS) {
     console.log('missing raw capture, skipped:', path.relative(process.cwd(), src))
     continue
   }
-  const q = new URLSearchParams({ kicker: s.kicker, title: s.title, src: pathToFileURL(src).href })
+  const q = new URLSearchParams({ kicker: s.kicker, title: s.title, src: pathToFileURL(src).href, w: String(SIZE.width), h: String(SIZE.height) })
   await page.goto(`${html}?${q}`, { waitUntil: 'load' })
   await page.evaluate(() => Promise.all([document.fonts.ready, ...[...document.images].map((i) => (i.complete ? null : new Promise((r) => (i.onload = i.onerror = r))))]))
   await new Promise((r) => setTimeout(r, 150))
-  const file = path.join(OUT, `${s.out}.png`)
-  await page.screenshot({ path: file, type: 'png' })
+  const file = path.join(OUT, `${s.out}.${EXT}`)
+  await page.screenshot(JPG ? { path: file, type: 'jpeg', quality: 92 } : { path: file, type: 'png' })
   console.log('saved', path.relative(process.cwd(), file))
 }
 await browser.close()

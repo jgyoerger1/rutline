@@ -6,17 +6,18 @@
 <style>
   @font-face { font-family: 'Geist'; font-weight: 100 900; src: url('../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2') format('woff2'); }
   @font-face { font-family: 'Geist Mono'; font-weight: 100 900; src: url('../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2') format('woff2'); }
-  /* One screenshot with a caption band above it. The page is sized by tools/store-frames.mjs
-     to the App Store class (402 x 874 CSS px for the 6.3-inch set) and captured at 3x. */
-  :root { --bg: #0f1311; --bone: #f2ede2; --bone-2: #c9c3b6; --ember: #e8702c; --w: 402px; --h: 874px; --band: 132px; }
+  /* One screenshot with a caption band above it. tools/store-frames.mjs sizes the page to the
+     App Store class (402 x 874 CSS px for the 6.3-inch set, passed as ?w=&h=) and captures at 3x.
+     --k scales the band with the width (square root, so the wide iPhone Duo frames keep most of the shot). */
+  :root { --bg: #0f1311; --bone: #f2ede2; --bone-2: #c9c3b6; --ember: #e8702c; --w: 402px; --h: 874px; --k: 1; --band: calc(132px * var(--k)); }
   * { box-sizing: border-box; margin: 0; }
   html, body { width: var(--w); height: var(--h); background: var(--bg); overflow: hidden; }
   .frame { position: relative; width: var(--w); height: var(--h); background: var(--bg); overflow: hidden; }
   .frame::before { content: ''; position: absolute; inset: 0; background: radial-gradient(80% 40% at 50% 0%, rgba(232,112,44,0.14), transparent 70%); }
-  .band { position: relative; height: var(--band); padding: 22px 22px 0; display: flex; flex-direction: column; justify-content: flex-start; gap: 7px; }
-  .kicker { font: 600 10.5px/1 'Geist Mono', monospace; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ember); }
-  .title { font: 600 23px/1.14 'Geist', sans-serif; letter-spacing: -0.02em; color: var(--bone); max-width: 20ch; }
-  .shot { position: absolute; left: 50%; top: var(--band); transform: translateX(-50%); width: calc(var(--w) * 0.9); border-radius: 26px; overflow: hidden;
+  .band { position: relative; height: var(--band); padding: calc(22px * var(--k)) calc(22px * var(--k)) 0; display: flex; flex-direction: column; justify-content: flex-start; gap: calc(7px * var(--k)); }
+  .kicker { font: 600 calc(10.5px * var(--k))/1 'Geist Mono', monospace; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ember); }
+  .title { font: 600 calc(23px * var(--k))/1.14 'Geist', sans-serif; letter-spacing: -0.02em; color: var(--bone); max-width: 20ch; }
+  .shot { position: absolute; left: 50%; top: var(--band); transform: translateX(-50%); width: calc(var(--w) * 0.9); border-radius: calc(26px * var(--k)); overflow: hidden;
     box-shadow: 0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(242,237,226,0.08); background: #000; }
   .shot img { display: block; width: 100%; height: auto; }
   .fade { position: absolute; left: 0; right: 0; bottom: 0; height: 90px; background: linear-gradient(180deg, transparent, rgba(15,19,17,0.9)); }
@@ -33,6 +34,9 @@
   </div>
   <script>
     const q = new URLSearchParams(location.search)
+    const w = Number(q.get('w')) || 402, h = Number(q.get('h')) || 874
+    const root = document.documentElement.style
+    root.setProperty('--w', `${w}px`); root.setProperty('--h', `${h}px`); root.setProperty('--k', String(Math.sqrt(w / 402)))
     document.getElementById('kicker').textContent = q.get('kicker') || ''
     document.getElementById('title').textContent = q.get('title') || ''
     document.getElementById('img').src = q.get('src') || ''

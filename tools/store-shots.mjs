@@ -2,13 +2,17 @@
 // a few pins, and saves PNGs to store/screenshots/<class>/. Run `npm run dev` first.
 //   node tools/store-shots.mjs            # 6.3-inch class, 1206 x 2622 (402 x 874 CSS px at 3x): the size Apple requires
 //   node tools/store-shots.mjs --class=6.9  # 6.9-inch class, 1320 x 2868 (440 x 956 at 3x), optional larger set
+//   node tools/store-shots.mjs --class=duo-outer  # iPhone Duo outer display, 1398 x 2034 (466 x 678 at 3x)
+//   node tools/store-shots.mjs --class=duo-inner  # iPhone Duo inner display, 2007 x 2853 (669 x 951 at 3x)
 // Apple (2026) requires at least one "iPhone with Dynamic Island (medium display)" screenshot
 // and scales it to every other iPhone; the 6.9 set is only used on the largest phones.
 import fs from 'node:fs'
 import path from 'node:path'
 import puppeteer from 'puppeteer-core'
 
-const CLASSES = { '6.3': { width: 402, height: 874 }, '6.9': { width: 440, height: 956 } }
+// CSS px at 3x. The iPhone Duo (2026 folding iPhone) has two optional slots, required from April 2027;
+// filling them earns the "made for iPhone Duo" badge on the product page.
+const CLASSES = { '6.3': { width: 402, height: 874 }, '6.9': { width: 440, height: 956 }, 'duo-outer': { width: 466, height: 678 }, 'duo-inner': { width: 669, height: 951 } }
 const CLASS = (process.argv.find((a) => a.startsWith('--class=')) ?? '--class=6.3').slice('--class='.length)
 if (!CLASSES[CLASS]) throw new Error(`unknown class ${CLASS}; use ${Object.keys(CLASSES).join(' or ')}`)
 const SIZE = CLASSES[CLASS]
@@ -171,10 +175,10 @@ const example = await page.$$eval('button', (bs) => {
   return !!b
 })
 await sleep(900)
-await page.evaluate(() => {
+await page.evaluate((h) => {
   const s = document.querySelector('[data-view-scroll]')
-  if (s) s.scrollTop = s.scrollHeight - 1400
-})
+  if (s) s.scrollTop = s.scrollHeight - h
+}, Math.round(SIZE.height * 1.6)) // 1400 on the 874-tall class: the sheet's totals land mid-screen
 await sleep(800)
 if (example) await shot('05-score-sheet')
 

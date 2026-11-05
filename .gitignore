@@ -18,3 +18,7 @@ fastlane/README.md
 store/screenshots/6.3/
 store/screenshots/6.9/
 store/screenshots/6.9-captioned/
+
+# iPhone Duo raw captures (the captioned sets are committed as JPEG)
+store/screenshots/duo-outer/
+store/screenshots/duo-inner/

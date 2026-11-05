@@ -3,7 +3,7 @@
 // tracker UI the way a hunter sees it: the filtered frame, scanline, corner brackets,
 // the Blood pill and the pixel count. Run `npm run dev` first.
 //   node tools/blood-shot.mjs                   # 6.3-inch class, 1206 x 2622 (402 x 874 CSS px at 3x)
-//   node tools/blood-shot.mjs --class=6.9       # 1320 x 2868
+//   node tools/blood-shot.mjs --class=6.9       # 1320 x 2868; --class=duo-outer (1398 x 2034) and duo-inner (2007 x 2853) for iPhone Duo
 //   node tools/blood-shot.mjs --photo=some.jpg  # another source photo; a landscape photo is extended to a portrait frame
 //   node tools/blood-shot.mjs --still           # the "Try it on a photo" state instead of the live camera
 // Writes store/screenshots/<class>/07-blood-light.png (the raw capture that tools/store-frames.mjs
@@ -13,7 +13,7 @@ import os from 'node:os'
 import path from 'node:path'
 import puppeteer from 'puppeteer-core'
 
-const CLASSES = { '6.3': { width: 402, height: 874 }, '6.9': { width: 440, height: 956 } }
+const CLASSES = { '6.3': { width: 402, height: 874 }, '6.9': { width: 440, height: 956 }, 'duo-outer': { width: 466, height: 678 }, 'duo-inner': { width: 669, height: 951 } }
 const arg = (name, fallback) => (process.argv.find((a) => a.startsWith(`--${name}=`)) ?? `--${name}=${fallback}`).slice(name.length + 3)
 const CLASS = arg('class', '6.3')
 const SIZE = CLASSES[CLASS]
@@ -139,9 +139,11 @@ if (state.error) throw new Error(state.error)
 
 const raw = path.join(RAW, '07-blood-light.png')
 await page.screenshot({ path: raw, type: 'png' })
-const w = SIZE.width * 3, h = SIZE.height * 3
-const out = path.join(CREATIVE, `blood-light-${w}x${h}.png`)
-fs.copyFileSync(raw, out)
 console.log('wrote', path.relative(process.cwd(), raw))
-console.log('wrote', path.relative(process.cwd(), out))
+// The phone-size frame also goes to store/creative for feature cards and posts; the other classes are store-only
+if (CLASS === '6.3') {
+  const out = path.join(CREATIVE, `blood-light-${SIZE.width * 3}x${SIZE.height * 3}.png`)
+  fs.copyFileSync(raw, out)
+  console.log('wrote', path.relative(process.cwd(), out))
+}
 await browser.close()

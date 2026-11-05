@@ -113,6 +113,12 @@ pitch and the landowner shot lead. If App Store Connect also offers a 6.9-inch s
 is the same set at 1320 × 2868. Regenerate: `node tools/store-shots.mjs` (raw captures, dev server running) then
 `node tools/store-frames.mjs` (captions); add `--class=6.9` to both for the larger set. The blood-light shot comes from `node tools/blood-shot.mjs` instead (Chrome plays `store/source/blood-trail.jpg` as the camera, so the light is running in the picture), then `node tools/store-frames.mjs --only=blood-light`.
 
+**iPhone Duo** (two more slots, optional now and required from April 2027 for apps built with the iOS 27.1 SDK; filling
+them puts a "made for iPhone Duo" badge on the product page): upload `store/screenshots/duo-outer-captioned/` (1398 × 2034)
+under **iPhone Duo (outer display)** and `store/screenshots/duo-inner-captioned/` (2007 × 2853) under **iPhone Duo (inner
+display)**, same ten shots in the same order, saved as JPEG to keep the repo small. Regenerate with `--class=duo-outer` or
+`--class=duo-inner` on `store-shots`, `blood-shot` and `store-frames --jpg`.
+
 **Header** (Header tab): `store/creative/header-rut-3840x1646.png`, the 21:9 artwork at the top of the product page
 on iOS 27: "Know when to sit, not just where." with the rut ribbon (Pre-rut to 2nd rut, Chasing lit, today's
 dawn/dusk reading) over the live map, the buck at the left edge. That is the differentiator no other hunting app

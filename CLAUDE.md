@@ -70,9 +70,9 @@ npm run android:sync   # build:native + npx cap sync android
 npm run android:assets # Android launcher icons from resources/ (delete the splash PNGs it writes; drawable/splash.xml is the plain launch background)
 node tools/play-shots.mjs      # Google Play screenshots 1080x1920 -> store/play/ (dev server running)
 node tools/feature-graphic.mjs # Play feature graphic 1024x500 + icon 512 -> store/play/
-node tools/store-shots.mjs   # raw App Store captures 1206x2622 -> store/screenshots/6.3/ (dev server running; --class=6.9 for 1320x2868)
+node tools/store-shots.mjs   # raw App Store captures 1206x2622 -> store/screenshots/6.3/ (dev server running; --class=6.9 for 1320x2868, duo-outer 1398x2034, duo-inner 2007x2853)
 node tools/blood-shot.mjs    # blood light with the camera running: Chrome plays store/source/blood-trail.jpg as the camera -> store/screenshots/6.3/07-blood-light.png + store/creative/blood-light-1206x2622.png (then store-frames --only=blood-light)
-node tools/store-frames.mjs  # captioned set in App Store order -> store/screenshots/6.3-captioned/ (the set to upload; --class=6.9)
+node tools/store-frames.mjs  # captioned set in App Store order -> store/screenshots/6.3-captioned/ (the set to upload; --class=6.9 | duo-outer | duo-inner, --jpg for the Duo sets)
 node tools/store-art.mjs     # iOS 27 product-page headers 3840x1646 (header-rut = rut ribbon, the one to upload; header = land line) + search art 3840x2560 over the live map -> store/creative/
 node tools/store-art-buck.mjs  # brand-only alternates (buck + lockup) -> store/creative/*-lockup-*.jpg
 node tools/pro-shot.mjs      # Pro sheet review screenshot -> store/review/ (dev server running)
