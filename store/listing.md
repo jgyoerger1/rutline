@@ -150,7 +150,7 @@ tick exactly these two → Next → **Publish** (a new app's labels publish once
 | Feature | Claim? | Why |
 |---|---|---|
 | Dark Interface | **Yes** | the app is dark on every screen (pine/charcoal + bone), no bright flashes |
-| Reduced Motion | **Yes** | every animation, spring and ambient loop honours the system Reduce Motion setting () |
+| Reduced Motion | **Yes** | every animation, spring and ambient loop honours the system Reduce Motion setting (the prefers-reduced-motion media query) |
 | Larger Text | No | text is fixed-size Geist; Apple wants 200% via Dynamic Type or an in-app size control (neither exists yet) |
 | Sufficient Contrast | No | not audited; the muted bone-600 captions sit near 4.4:1, under Apple's 4.5:1 |
 | Differentiate Without Color Alone, VoiceOver, Voice Control | No | not audited; the Leaflet map and canvas views would need work before claiming |
