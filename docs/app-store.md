@@ -123,6 +123,8 @@ Then App Store Connect, top to bottom. The text for every field is in `store/lis
 2. **Pricing and Availability**: Price Schedule → **Free**; Availability → Edit → **United States** only. Save.
 3. **App Privacy**: Privacy Policy URL, then **Get Started** → the data types listed in `store/listing.md` →
    **Publish**.
+   Also under General: **App Accessibility** (optional for now): Get Started → iPhone → Yes → tick Dark Interface and
+   Reduced Motion only (the table in `store/listing.md` says why) → Next → Publish.
 4. **Subscriptions** (under Monetization): open the Rutline Pro group → Rutline Pro must read **Ready to
    Submit**. If it says *Missing Metadata*, open it: a localization (display name and description), a price,
    and under Review Information the screenshot `store/review/pro-sheet.png` with its note. Save.

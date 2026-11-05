@@ -141,6 +141,24 @@ For every one of them: **Linked to the user: Yes. Used for tracking: No. Purpose
 
 Everything else is **Not collected**. Then click **Publish** at the top right; the label goes live with the app.
 
+## App Accessibility (General → App Accessibility)
+
+Apple's accessibility labels (iOS 26+). Voluntary for now; Apple says they will become required for new apps
+and updates later. The product page shows only the features you tick. Click **Get Started** → iPhone → "Yes" →
+tick exactly these two → Next → **Publish** (a new app's labels publish once the app is live on the store).
+
+| Feature | Claim? | Why |
+|---|---|---|
+| Dark Interface | **Yes** | the app is dark on every screen (pine/charcoal + bone), no bright flashes |
+| Reduced Motion | **Yes** | every animation, spring and ambient loop honours the system Reduce Motion setting () |
+| Larger Text | No | text is fixed-size Geist; Apple wants 200% via Dynamic Type or an in-app size control (neither exists yet) |
+| Sufficient Contrast | No | not audited; the muted bone-600 captions sit near 4.4:1, under Apple's 4.5:1 |
+| Differentiate Without Color Alone, VoiceOver, Voice Control | No | not audited; the Leaflet map and canvas views would need work before claiming |
+| Captions, Audio Descriptions | leave unticked | the app has no audio or video content |
+
+Before ticking Reduced Motion, confirm on the phone once: Settings → Accessibility → Motion → Reduce Motion on,
+open Rutline, and the splash, HuntCast ribbon, wind compass and the blood-light scan line should all sit still.
+
 ## App Review Information (bottom of the version page)
 
 - **Sign-in required**: on. Enter the demo account's email and password (create it in the app first, with a
