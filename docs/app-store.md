@@ -127,7 +127,7 @@ Then App Store Connect, top to bottom. The text for every field is in `store/lis
    Reduced Motion only (the table in `store/listing.md` says why) → Next → Publish.
 4. **Subscriptions** (under Monetization): open the Rutline Pro group → Rutline Pro must read **Ready to
    Submit**. If it says *Missing Metadata*, open it: a localization (display name and description), a price,
-   and under Review Information the screenshot `store/review/pro-sheet.png` with its note. Save.
+   and under Review Information the screenshot `store/review/pro-sheet.png` with its note; also the subscription **group** needs its own localization (group page → Localization → English (U.S.) → display name `Rutline Pro`) and the subscription needs **Availability** saved (Set Up Availability → all countries). The missing group display name is what kept rutline_pro_year in Missing Metadata on 2026-11-15, which is why it never joined the 1.0 submission. Delete stray products in the group (a duplicate "Rutline2027" existed). Save.
 5. **iOS App → the version → Prepare for Submission** (the version string must equal `package.json`):
    drag the ten captioned screenshots into the **iPhone with Dynamic Island (medium display)** slot, and the Duo sets into the two **iPhone Duo** slots (`store/listing.md` → Screenshots); Promotional Text, Description, Keywords, Support URL,
    Marketing URL; **Build → + → the latest build** (the one with the Esri key); **In-App Purchases and
@@ -149,6 +149,8 @@ Store → *Apple Server to Server notification URL* into both Production and San
 renewals reach the webhook within minutes instead of at the next app launch.
 
 ## Rutline Pro in the native app
+
+**If Waiting for Review stalls** (ten days on 2026-11-15): App Store Connect → Contact Us → App Review → ask about the status, or request an expedited review when the window is time-sensitive (the rut, the November 30 Ohio gun opener). Removing the version from review restarts the queue, so only do it to add something the reviewer needs, such as the subscription.
 
 The web app sells Pro through a Stripe Payment Link (`supabase/README.md` §8). Apple does not allow that inside an iOS app, so the native build sells the same season pass through StoreKit with RevenueCat (`supabase/README.md` §9, `src/lib/iap.ts`, webhook `supabase/functions/revenuecat-webhook`). Until the repo variable `VITE_REVENUECAT_IOS_KEY` exists, every native build runs fully unlocked (`NATIVE_PREVIEW` in `src/lib/pro.ts`; repo variable `VITE_PRO_PREVIEW=1` does the same for every build, web included, during testing): TestFlight testers get the whole app and Apple's beta reviewer never meets a locked feature with no way to buy it. Before submitting to the App Store: accept the Paid Apps agreement, create the subscription product and the RevenueCat project, add the variable, build again and buy once with a sandbox tester. Submitting with locked features and no way to buy them is a 2.1 rejection, so either ship with the key or ship fully unlocked. For an auto-renewable subscription the buy screen must show the price, the term, Apple's standard EULA link and the privacy policy link; the Pro sheet does.
 
