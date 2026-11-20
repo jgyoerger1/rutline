@@ -177,7 +177,7 @@ cache 30 d hit / 7 d miss), `huntUnits.ts` (39 states + OH/IN county regulation 
 - Jordan: sandbox purchase of Pro on the 1.1.0 TestFlight build; "Not for sale yet" = Paid Apps agreement not Active.
 - Before App Store submission: Paid Apps agreement, review notes + demo account (text in `docs/app-store.md` §8),
   decide when to drop `VITE_PRO_PREVIEW` on the web,
-  Stripe product/link/webhook for web sales. Supabase email: Resend custom SMTP connected 2026-11-03 (Confirm email on, 30/hr). `VITE_ESRI_API_KEY` is set (ArcGIS Location Platform, expires 2027-11; the key must be regenerated and rebuilt before then).
+  Stripe product/link/webhook for web sales. Supabase email: Resend custom SMTP connected 2026-11-03 (Confirm email on, 30/hr). `VITE_ESRI_API_KEY` is set (ArcGIS Location Platform, expires 2027-11; the key must be regenerated and rebuilt before then). Esri replaces the 2M-free-tiles tier with a single US$50/month allowance on 2027-02-25 (about 333k tiles at $0.15 per 1,000 if the rate holds; Esri says no action yet, details to come); check Dashboard → Usage, and USGS NAIP imagery is the free fallback if it ever bites.
 - Known gap: an iOS purchase made while signed out reaches the account row only on the next renewal.
 - Universal links not configured (invite links `#/join/CODE` open the website; app answers `rutline://join/CODE`).
 - Ideas not built: hunt log / sightings calibration, Leaflet chunk splitting (main bundle large), vector antler mark,
