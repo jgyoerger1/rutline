@@ -11,7 +11,7 @@ personal contact details. Business case lives in a separate private repo (rutlin
 - Web (PWA): https://jordanyoerger.com/rutline/ — GitHub Pages via Actions (`.github/workflows/deploy.yml`).
   `jgyoerger1.github.io/rutline` redirects there. Privacy/support pages: `public/privacy.html`, `public/support.html`.
 - iOS: Capacitor shell, bundle id `com.jordanyoerger.rutline`, iPhone only. In **TestFlight** (1.0.0 first upload
-  2026-10-25; 1.1.0 uploaded 2026-10-28 with in-app purchase; 1.1.1, 1.1.2 and 1.1.3 uploaded 2026-10-30; 1.1.4 and 1.1.5 (first build with the Esri key) uploaded 2026-11-01; **1.1.6** (keyboard fix: Keyboard resize 'native', sign-in and sheet fields stay above the keyboard) uploaded 2026-11-04). Not yet submitted to App Store review.
+  2026-10-25; 1.1.0 uploaded 2026-10-28 with in-app purchase; 1.1.1, 1.1.2 and 1.1.3 uploaded 2026-10-30; 1.1.4 and 1.1.5 (first build with the Esri key) uploaded 2026-11-01; **1.1.6** (keyboard fix: Keyboard resize 'native', sign-in and sheet fields stay above the keyboard) uploaded 2026-11-04). **App Store version 1.0 (build 51 = 1.1.6) with the Rutline Pro subscription APPROVED by App Review, submission of 2026-11-16; Manual release, so it goes live when Jordan clicks Release This Version in App Store Connect.** The next store version must be numbered above 1.0 (use the package.json version).
 - Version lives in `package.json` (`1.1.6`); iOS build number = GitHub Actions run number.
 - Android: Capacitor shell `android/` (added 2026-11-03, same id), `android.yml` builds the `.aab` on `ubuntu-latest` (JDK 21);
   first run 41663334270 green, unsigned until the upload-key secrets are loaded. Not yet in the Play Console; `docs/google-play.md`
